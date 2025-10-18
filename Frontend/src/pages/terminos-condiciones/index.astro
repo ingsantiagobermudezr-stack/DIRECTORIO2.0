@@ -1,0 +1,87 @@
+---
+import GlobalLayout from "../../layout/GlobalLayout.astro";
+---
+
+<GlobalLayout title="Condiciones Generales / Ayuda">
+  <style>
+    :root{
+      --accent:#f1c40f; /* amarillo */
+      --text:#2b2b2b;
+      --muted:#6b7280;
+      --bg:#ffffff;
+      --border:#e5e7eb;
+    }
+
+    .shell{
+      max-width: 1100px;
+      margin: 48px auto;
+      background: var(--bg);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+      overflow: hidden;
+    }
+
+    .header{
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .title{
+      font-size: 1.6rem; font-weight: 800; color: var(--text);
+    }
+
+    /* Tabs */
+    .tabs{ display:flex; gap:10px; }
+    .tab{
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s;
+    }
+    .tab:is(:hover,:focus-visible){ border-color: var(--accent); outline: none; }
+    .tab.is-active{ background: var(--accent); border-color: var(--accent); color:#111; }
+
+    /* Panels */
+    .panel{ display:none; }
+    .panel.is-active{ display:block; }
+
+    /* Layout Reglas */
+    .body{
+      display:grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      padding: 24px;
+    }
+    @media (max-width: 900px){
+      .body{ grid-template-columns: 1fr; }
+    }
+
+    /* Submenú lateral */
+    .menu{
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      height: max-content;
+      position: sticky; top: 16px;
+      background:#fff;
+    }
+    .menu-title{
+      font-weight: 700; margin: 4px 8px 10px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .04em; font-size: .78rem;
+    }
+    .menu-btn{
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .menu-btn:hover

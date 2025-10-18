@@ -1,0 +1,66 @@
+.title-content-empresas {
+  text-align: center;
+  margin-block: 60px;
+}
+
+.empresa-grid {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  max-width: 1128px;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.empresa-card {
+  padding: 12px;
+  border: 1px solid #acacac;
+  border-radius: 12px;
+  width: 350px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background-color: white;
+}
+
+.listado-empresas .content-filter {
+  display: flex;
+  flex-direction: row;
+  max-width: 500px;
+  width: 500px;
+  justify-content: space-around;
+  margin-bottom: 30px;
+}
+
+.listado-empresas .content-filter .content-input {
+  flex: 1;
+}
+
+.empresa-card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
+.empresa-card h2 {
+  font-weight: 600;
+  margin-bottom: 16px;
+  font-size: 1.4rem;
+}
+
+.empresa-card p {
+  margin-bottom: 8px;
+  display: block;
+}
+
+.empresa-card p .label {
+  font-weight: 600;
+}
+
+.empresa-card:hover {
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.sin-resultados {
+  text-align: center;
+  width: 100%;
+}

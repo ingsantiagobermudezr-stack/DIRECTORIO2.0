@@ -1,0 +1,50 @@
+.content-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  width: 350px;
+  margin-inline: auto;
+}
+
+.content-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content-submit button {
+  background-color: #ffcc00;
+}
+
+.content-submit button.cancel-action {
+  background-color: rgba(234, 234, 234, 0.933);
+  margin-top: 16px;
+}
+
+input,
+select,
+textarea {
+  padding: 12px 6px;
+  background-color: white;
+  border: 1px solid #ececec;
+  outline: none;
+  border-radius: 6px;
+}
+
+input:focus {
+  border-color: #ffcc00;
+}
+
+.content-submit button:disabled {
+  opacity: 0.8;
+}
+
+.error-form {
+  display: block;
+  padding: 12px 16px;
+  background-color: #facec6;
+  color: #f83535;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}

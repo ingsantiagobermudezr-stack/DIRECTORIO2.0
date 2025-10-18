@@ -1,0 +1,90 @@
+{
+  "info": {
+    "name": "Marketplace API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Listar Marketplace",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/marketplace",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["marketplace"]
+        }
+      }
+    },
+    {
+      "name": "Obtener Marketplace por ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/marketplace/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["marketplace", "1"]
+        }
+      }
+    },
+    {
+      "name": "Crear Marketplace",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Ejemplo Producto\",\n  \"descripcion\": \"Descripción del producto\",\n  \"precio\": 100.0,\n  \"imagen_url\": \"https://ejemplo.com/imagen.jpg\",\n  \"estado\": \"activo\",\n  \"id_empresa\": 1,\n  \"id_categoria\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/marketplace",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["marketplace"]
+        }
+      }
+    },
+    {
+      "name": "Editar Marketplace",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Producto Editado\",\n  \"descripcion\": \"Descripción actualizada\",\n  \"precio\": 150.0,\n  \"imagen_url\": \"https://ejemplo.com/imagen2.jpg\",\n  \"estado\": \"activo\",\n  \"id_empresa\": 1,\n  \"id_categoria\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/marketplace/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["marketplace", "1"]
+        }
+      }
+    },
+    {
+      "name": "Eliminar Marketplace",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/marketplace/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["marketplace", "1"]
+        }
+      }
+    }
+  ]
+}

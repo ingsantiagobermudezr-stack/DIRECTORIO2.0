@@ -1,0 +1,11 @@
+---
+import { MunicipioForm } from "../../../../../components/admin/municipio/MunicipioForm";
+import GlobalLayout from "../../../../../layout/GlobalLayout.astro";
+
+const { params } = Astro;
+
+---
+
+<GlobalLayout title="Editar Municipio">
+    <MunicipioForm id_municipio={params.id} client:load/>
+</GlobalLayout>

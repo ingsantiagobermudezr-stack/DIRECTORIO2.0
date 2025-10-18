@@ -1,0 +1,11 @@
+---
+import { UsuarioForm } from "../../../../../components/admin/usuarios/UsuariosForm";
+import GlobalLayout from "../../../../../layout/GlobalLayout.astro";
+
+const { params } = Astro;
+
+---
+
+<GlobalLayout title="Editar Usuario">
+    <UsuarioForm id_usuario={params.id} client:load/>
+</GlobalLayout>

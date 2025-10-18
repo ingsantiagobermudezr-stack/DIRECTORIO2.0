@@ -1,0 +1,44 @@
+---
+import { CrearEmpresa } from "../../../components/Formularios/CrearEmpresa";
+import { ListadoCategorias } from "../../../components/ListadoCategorias";
+import GlobalLayout from "../../../layout/GlobalLayout.astro";
+import { axiosInstance } from "../../../utils/axiosInstance";
+
+const rol = (Astro.cookies.get("rol") || {})?.value;
+
+if (!rol || rol !== "admin") {
+  return Astro.redirect("/");
+}
+
+// const { data: dataMunicipio } = await axiosInstance("/municipios", {
+//   method: "GET",
+//   params: { skip: 0, limit: 10 },
+// });
+
+const { data: dataCategoria } = await axiosInstance("/categorias", {
+  method: "GET",
+  params: { skip: 0, limit: 100 },
+});
+---
+
+<GlobalLayout title="Categorias">
+  <style>
+    .content-form-crear-empresa {
+      min-height: calc(100vh - 120px);
+      display: flex;
+      justify-content: center;
+    }
+
+    .content-form-crear-empresa h2 {
+      text-align: center;
+      margin-block: 60px;
+    }
+  </style>
+
+  <div class="content-form-crear-empresa">
+    <section>
+      <h2>Categorias</h2>
+      <ListadoCategorias categorias={dataCategoria || []} client:load />
+    </section>
+  </div>
+</GlobalLayout>

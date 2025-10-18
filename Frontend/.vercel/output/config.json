@@ -1,0 +1,43 @@
+{
+	"version": 3,
+	"routes": [
+		{
+			"src": "^/_astro/(.*)$",
+			"headers": {
+				"cache-control": "public, max-age=31536000, immutable"
+			},
+			"continue": true
+		},
+		{
+			"handle": "filesystem"
+		},
+		{
+			"src": "^\\/_image$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/contacto\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/crear-cuenta\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/empresas\\/crear\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/empresas\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/iniciar-sesion\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/$",
+			"dest": "_render"
+		}
+	]
+}

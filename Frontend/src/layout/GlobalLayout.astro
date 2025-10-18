@@ -1,0 +1,26 @@
+---
+const { title, auth = false } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{title}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body class="bg-gray-50 min-h-screen flex flex-col">
+    <header class="bg-yellow-400 py-4 text-center font-bold text-xl">
+      Páginas Amarillas 360
+    </header>
+
+    {auth ? (
+      <main class="flex-1 flex justify-center items-center">
+        <slot />
+      </main>
+    ) : (
+      <main class="flex-1">
+        <slot />
+      </main>
+    )}
+  </body>
+</html>

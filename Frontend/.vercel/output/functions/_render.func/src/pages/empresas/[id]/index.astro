@@ -1,0 +1,188 @@
+---
+import GlobalLayout from "../../../layout/GlobalLayout.astro";
+import { axiosInstance } from "../../../utils/axiosInstance";
+import { EnviarCalificacion } from "../../../components/Formularios/EnviarCalificacion";
+import dayjs from "dayjs";
+const { id } = Astro.params;
+
+const id_usuario = (Astro.cookies.get("id_usuario") || {})?.value;
+const token = (Astro.cookies.get("token") || {})?.value;
+
+const { data } = await axiosInstance(`/empresas/${id}`, {
+  method: "GET",
+});
+
+const { data: dataReview } = await axiosInstance(`/reviews/${id}`, {
+  method: "GET",
+});
+
+let puedeComentar = false;
+
+console.log({ id_usuario });
+
+if (
+  !!id_usuario &&
+  !dataReview.find((review: any) => review.id_usuario.toString() === id_usuario)
+)
+  puedeComentar = true;
+---
+
+<GlobalLayout title="Detalle Empresa">
+  <style>
+    .content-detalle-empresa {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      width: 100%;
+      gap: 16px;
+    }
+
+    .content-detalle-empresa h2 {
+      margin-top: 60px;
+      margin-bottom: 20px;
+    }
+    .content-data {
+      max-width: 350px;
+    }
+
+    .content-data .label {
+      font-weight: 600;
+    }
+
+    .content-calificaciones h3 {
+      margin-top: 60px;
+      margin-bottom: 20px;
+    }
+
+    .listado-calificaciones {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .calificacion {
+      border: 1px solid #9e9e9e;
+      border-radius: 12px;
+      padding: 16px;
+      width: 350px;
+      background-color: white;
+    }
+
+    .calificacion .nombre-usuario {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 1.1rem;
+    }
+
+    .calificacion .fecha {
+      margin-bottom: 12px;
+      display: block;
+      font-size: 0.85rem;
+    }
+
+    .content-form-calificacion h3 {
+      margin-top: 60px;
+      margin-bottom: 20px;
+    }
+
+    .content-crear-cuenta {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-top: 40px;
+    }
+
+    .content-crear-cuenta span {
+      display: block;
+      text-align: center;
+    }
+
+    .content-crear-cuenta button {
+      display: block;
+      text-align: center;
+      background-color: #ffcc00;
+    }
+
+    .content-crear-cuenta button a {
+      display: block;
+    }
+  </style>
+
+  <section class="content-detalle-empresa">
+    <h2>Empresa {data.nombre}</h2>
+
+    <p class="content-data">
+      <span class="label"> NIT:</span>{" "}
+      <span class="value">{data.nit}</span>{" "}
+    </p>
+    <p class="content-data">
+      <span class="label"> Correo electrónico:</span>{" "}
+      <span class="value">{data.correo}</span>{" "}
+    </p>
+    <p class="content-data">
+      <span class="label"> Dirección:</span>{" "}
+      <span class="value">{data.direccion}</span>{" "}
+    </p>
+    <p class="content-data">
+      <span class="label"> Teléfono:</span>{" "}
+      <span class="value">{data.telefono}</span>{" "}
+    </p>
+
+    <div class="content-calificaciones">
+      <h3 class="content-calificaciones">Calificaciones</h3>
+
+      <div class="listado-calificaciones">
+        {
+          !!dataReview.length ? (
+            dataReview.map((review: any) => (
+              <article class="calificacion">
+                <h5 class="nombre-usuario">
+                  {review.id_usuario.toString() === id_usuario
+                    ? "Tú"
+                    : review.usuario.nombre}{" "}
+                  <span> {review.calificacion}/5 </span>
+                </h5>
+                <span class="fecha">
+                  {dayjs(review.fecha)
+                    .subtract(5, "hours")
+                    .format("DD/MM/YYYY HH:mm")}
+                </span>
+                <p class="comentario">{review.comentario}</p>
+              </article>
+            ))
+          ) : (
+            <span>Sin calificaciones</span>
+          )
+        }
+      </div>
+    </div>
+
+    <div class="content-form-calificacion">
+      {
+        puedeComentar && (
+          <>
+            <h3>Calificar empresa</h3>
+            <EnviarCalificacion
+              id_usuario={id_usuario}
+              id_empresa={id}
+              client:load
+            />
+          </>
+        )
+      }
+
+      {
+        !token && (
+          <div class="content-crear-cuenta">
+            <span>Inicia sesión para dejar una calificación</span>
+
+            <button>
+              <a href="/iniciar-sesion"> Iniciar sesión </a>
+            </button>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</GlobalLayout>

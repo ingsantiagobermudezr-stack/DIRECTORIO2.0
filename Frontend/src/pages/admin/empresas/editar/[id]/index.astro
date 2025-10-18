@@ -1,0 +1,11 @@
+---
+import { EmpresaForm } from "../../../../../components/admin/empresa/EmpresaForm";
+import GlobalLayout from "../../../../../layout/GlobalLayout.astro";
+
+const { params } = Astro;
+
+---
+
+<GlobalLayout title="Editar Empresas">
+    <EmpresaForm id_empresa={params.id} client:load/>
+</GlobalLayout>

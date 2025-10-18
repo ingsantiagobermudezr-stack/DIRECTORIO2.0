@@ -1,0 +1,16 @@
+---
+import { Marketplace } from "../components/Marketplace";
+import { axiosInstance } from "../utils/axiosInstance";
+
+let productos = [];
+try {
+  const res = await axiosInstance("/marketplace", { method: "GET" });
+  productos = res.data;
+} catch (error) {
+  console.error("Error al cargar productos del marketplace:", error);
+}
+
+const rol = Astro.cookies.get("rol")?.value || "user";
+---
+
+<Marketplace productos={productos} rol={rol} client:load />
