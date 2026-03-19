@@ -3,9 +3,11 @@ import GlobalLayout from "../../../layout/GlobalLayout.astro";
 import { axiosInstance } from "../../../utils/axiosInstance";
 import { EnviarCalificacion } from "../../../components/Formularios/EnviarCalificacion";
 import dayjs from "dayjs";
+import { BotonEliminarEmpresa } from "../../../components/commons/BotonEliminarEmpresa";
 const { id } = Astro.params;
 
 const id_usuario = (Astro.cookies.get("id_usuario") || {})?.value;
+const rol = (Astro.cookies.get("rol") || {})?.value;
 const token = (Astro.cookies.get("token") || {})?.value;
 
 const { data } = await axiosInstance(`/empresas/${id}`, {
@@ -17,8 +19,6 @@ const { data: dataReview } = await axiosInstance(`/reviews/${id}`, {
 });
 
 let puedeComentar = false;
-
-console.log({ id_usuario });
 
 if (
   !!id_usuario &&
@@ -39,7 +39,6 @@ if (
     }
 
     .content-detalle-empresa h2 {
-      margin-top: 60px;
       margin-bottom: 20px;
     }
     .content-data {
@@ -107,27 +106,106 @@ if (
     .content-crear-cuenta button a {
       display: block;
     }
+    .content-menu-list {
+      display: flex;
+      list-style-type: none;
+      justify-content: space-around;
+      margin-bottom: 30px;
+      max-width: 250px;
+      width: 100%;
+      margin-top: 60px;
+    }
+
+    .content-menu-list li a {
+      display: block;
+      padding: 12px 16px;
+      background-color: #ffcc00;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .content-card-folder {
+      display: flex;
+      width: 800px;
+      margin: 0 auto;
+      gap: 32px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .content-card-folder .content-img {
+      display: flex;
+
+      width: 100%;
+      max-width: 280px;
+      margin: 0 auto;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+    }
+    .content-card-folder .content-img img {
+      width: 100%;
+      max-width: 280px;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+    }
+    .content-card-folder .content-detail-empresa {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
   </style>
 
   <section class="content-detalle-empresa">
-    <h2>Empresa {data.nombre}</h2>
+    {
+      rol === "admin" && (
+        <ul class="content-menu-list">
+          <li>
+            <a href={`/empresas/crear?id=${id}`}>Editar</a>
+          </li>
+          <li class="btn-cancel">
+            <BotonEliminarEmpresa id={id || ""} client:load />
+          </li>
+        </ul>
+      )
+    }
 
-    <p class="content-data">
-      <span class="label"> NIT:</span>{" "}
-      <span class="value">{data.nit}</span>{" "}
-    </p>
-    <p class="content-data">
-      <span class="label"> Correo electrónico:</span>{" "}
-      <span class="value">{data.correo}</span>{" "}
-    </p>
-    <p class="content-data">
-      <span class="label"> Dirección:</span>{" "}
-      <span class="value">{data.direccion}</span>{" "}
-    </p>
-    <p class="content-data">
-      <span class="label"> Teléfono:</span>{" "}
-      <span class="value">{data.telefono}</span>{" "}
-    </p>
+    <h2 style={{ marginTop: rol === "admin" ? "20px" : "60px" }}>
+      {data.nombre}
+    </h2>
+
+    <div class="content-card-folder">
+      <div class="content-img">
+        {data.logo && <img src={data.logo} />}
+      </div>
+
+      <div class="content-detail-empresa">
+        <p class="content-data">
+          <span class="label"> NIT:</span>{" "}
+          <span class="value">{data.nit}</span>{" "}
+        </p>
+        <p class="content-data">
+          <span class="label"> Correo electrónico:</span>{" "}
+          <span class="value">{data.correo}</span>{" "}
+        </p>
+        <p class="content-data">
+          <span class="label"> Dirección:</span>{" "}
+          <span class="value">{data.direccion}</span>{" "}
+        </p>
+        <p class="content-data">
+          <span class="label"> Teléfono:</span>{" "}
+          <span class="value">{data.telefono}</span>{" "}
+        </p>
+        <p class="content-data">
+          <span class="label"> Categoría:</span>{" "}
+          <span class="value">{data.categoria.nombre}</span>{" "}
+        </p>
+        <p class="content-data">
+          <span class="label"> Municipio:</span>{" "}
+          <span class="value">{data.municipio.nombre}</span>{" "}
+        </p>
+      </div>
+    </div>
 
     <div class="content-calificaciones">
       <h3 class="content-calificaciones">Calificaciones</h3>

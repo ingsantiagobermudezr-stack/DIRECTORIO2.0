@@ -38,7 +38,7 @@ export function EditarUsuario({ defaultValues, idUser }: Props) {
     }
 
     try {
-      const { data } = await axiosInstance(`/usuarios/${idUser}`, {
+      const { data: _data } = await axiosInstance(`/usuarios/${idUser}`, {
         method: "PUT",
         data: formDataObj,
       });
@@ -64,13 +64,13 @@ export function EditarUsuario({ defaultValues, idUser }: Props) {
       navigate("/"); // Navega a la página principal
     } catch (error) {
       if (error instanceof AxiosError) {
-        const message =
+        const _message =
           error.response?.data?.detail || "Ocurrió un error inesperado.";
 
         setStatusForm((prev) => ({
           ...prev,
           isLoading: false,
-          error: message,
+          error: _message,
         }));
       }
     }

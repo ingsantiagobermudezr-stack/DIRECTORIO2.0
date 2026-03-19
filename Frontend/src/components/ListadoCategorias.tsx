@@ -55,7 +55,7 @@ export function ListadoCategorias({ categorias }: Props) {
         setList((prev) => [...prev, data]);
       } else {
         // TODO: editar
-        const { data } = await axiosInstance(
+        const { data: _data } = await axiosInstance(
           `/categorias/${formData.id_categoria}`,
           {
             method: "PUT",
@@ -78,8 +78,7 @@ export function ListadoCategorias({ categorias }: Props) {
       setIsLoading(false);
     } catch (error) {
       if (error instanceof AxiosError) {
-        const message =
-          error.response?.data?.detail || "Ocurrio un error inesperado.";
+        console.error(error.response?.data?.detail || "Ocurrio un error inesperado.");
       }
     } finally {
       if (form.current) {
@@ -90,7 +89,7 @@ export function ListadoCategorias({ categorias }: Props) {
 
   const onDelete = async (id: number) => {
     setOnDeleting(id);
-    const { data } = await axiosInstance(`/categorias/${id}`, {
+    const { data: _data } = await axiosInstance(`/categorias/${id}`, {
       method: "DELETE",
     });
 

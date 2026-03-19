@@ -1,8 +1,7 @@
 ---
-import { undefined } from "astro:schema";
 import { CrearEmpresa } from "../../../components/Formularios/CrearEmpresa";
 import GlobalLayout from "../../../layout/GlobalLayout.astro";
-import { axiosInstance } from "../../../utils/axiosInstance";
+import axiosInstance from "../../../utils/axiosInstance";
 
 const rol = (Astro.cookies.get("rol") || {})?.value;
 const id = Astro.url.searchParams.get("id") || "";

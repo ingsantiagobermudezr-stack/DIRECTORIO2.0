@@ -42,7 +42,7 @@ export function CrearEmpresa({
 
     try {
       if (id) {
-        const { data } = await axiosInstance(`/empresas/${id}`, {
+        const { data: _data } = await axiosInstance(`/empresas/${id}`, {
           method: "PUT",
           data: {
             ...formDataObj,
@@ -51,7 +51,7 @@ export function CrearEmpresa({
           },
         });
       } else {
-        const { data } = await axiosInstance("/empresas", {
+        const { data: _data } = await axiosInstance("/empresas", {
           method: "POST",
           data: {
             ...formDataObj,

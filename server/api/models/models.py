@@ -1,7 +1,91 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Table, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from api.db.conexion import Base
+
+# Asociación many-to-many entre roles y permisos
+role_permiso = Table(
+    'role_permiso', Base.metadata,
+    Column('id_rol', Integer, ForeignKey('rol.id_rol', ondelete='CASCADE')),
+    Column('id_permiso', Integer, ForeignKey('permiso.id_permiso', ondelete='CASCADE'))
+)
+
+
+# Modelo para País
+class Pais(Base):
+    __tablename__ = 'pais'
+
+    id_pais = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False)
+    codigo_iso = Column(String(10), nullable=True)
+
+    departamentos = relationship("Departamento", back_populates="pais", cascade="all, delete-orphan")
+
+
+# Modelo para Ciudad (complementario a Municipio si se necesita)
+class Ciudad(Base):
+    __tablename__ = 'ciudad'
+
+    id_ciudad = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False)
+    id_departamento = Column(Integer, ForeignKey('departamento.id_departamento', ondelete="CASCADE"))
+
+    departamento = relationship("Departamento", back_populates="ciudades")
+
+
+# Modelo de Roles y Permisos
+class Rol(Base):
+    __tablename__ = 'rol'
+
+    id_rol = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(50), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
+
+    permisos = relationship('Permiso', secondary=role_permiso, back_populates='roles')
+    usuarios = relationship('Usuario', back_populates='rol_obj')
+
+
+class Permiso(Base):
+    __tablename__ = 'permiso'
+
+    id_permiso = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
+
+    roles = relationship('Rol', secondary=role_permiso, back_populates='permisos')
+
+
+# Modelo de Auditoría
+class Auditoria(Base):
+    __tablename__ = 'auditoria'
+
+    id_auditoria = Column(Integer, primary_key=True, index=True)
+    tabla = Column(String(100), nullable=False)
+    operacion = Column(String(50), nullable=False)
+    id_registro = Column(Integer, nullable=True)
+    id_usuario = Column(Integer, ForeignKey('usuario.id_usuario', ondelete='SET NULL'), nullable=True)
+    descripcion = Column(Text, nullable=True)
+    fecha = Column(DateTime, default=datetime.utcnow)
+    usuario = relationship('Usuario', backref='auditorias')
+
+
+# Modelo para Productos (catálogo general distinto de marketplace)
+class Producto(Base):
+    __tablename__ = 'producto'
+
+    id_producto = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(150), nullable=False)
+    descripcion = Column(Text, nullable=True)
+    precio = Column(Float, nullable=True)
+    stock = Column(Integer, default=0)
+    sku = Column(String(100), nullable=True)
+    id_empresa = Column(Integer, ForeignKey('empresa.id_empresa', ondelete='SET NULL'), nullable=True)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+
+    empresa = relationship('Empresa')
+
+
+
 
 # Modelo para Marketplace (productos/servicios publicados por empresas)
 class Marketplace(Base):
@@ -17,8 +101,8 @@ class Marketplace(Base):
     id_empresa = Column(Integer, ForeignKey('empresa.id_empresa', ondelete="CASCADE"), nullable=False)
     id_categoria = Column(Integer, ForeignKey('categoria.id_categoria', ondelete="SET NULL"), nullable=True)
 
-    empresa = relationship("Empresa")
-    categoria = relationship("Categoria")
+    empresa = relationship("Empresa", back_populates="marketplaces")
+    categoria = relationship("Categoria", back_populates="marketplaces")
 
 
 # Modelo de Empresa, con datos básicos y relaciones
@@ -40,6 +124,7 @@ class Empresa(Base):
     municipio = relationship("Municipio", back_populates="empresas")
     publicidades = relationship("Publicidad", back_populates="empresa", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="empresa", cascade="all, delete-orphan")
+    marketplaces = relationship("Marketplace", back_populates="empresa", cascade="all, delete-orphan")
 
 
 # Modelo de Categoría para clasificar empresas por tipo o sector de servicio
@@ -50,8 +135,9 @@ class Categoria(Base):
     nombre = Column(String(100), nullable=False)
     descripcion = Column(Text, nullable=True)
 
-    # Relación inversa con Empresa
+    # Relación inversa con Empresa y Marketplace
     empresas = relationship("Empresa", back_populates="categoria", cascade="all, delete-orphan")
+    marketplaces = relationship("Marketplace", back_populates="categoria", cascade="all, delete-orphan")
 
 
 # Modelo de Municipio para organización geográfica
@@ -73,9 +159,12 @@ class Departamento(Base):
     
     id_departamento = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
+    id_pais = Column(Integer, ForeignKey('pais.id_pais', ondelete="SET NULL"), nullable=True)
     
-    # Relación inversa con Municipio
+    # Relación inversa con Municipio y Ciudad
     municipios = relationship("Municipio", back_populates="departamento", cascade="all, delete-orphan")
+    ciudades = relationship("Ciudad", back_populates="departamento", cascade="all, delete-orphan")
+    pais = relationship("Pais", back_populates="departamentos")
 
 
 # Modelo de Publicidad para gestionar anuncios de empresas
@@ -103,11 +192,15 @@ class Usuario(Base):
     apellido = Column(String(100), nullable=False)
     correo = Column(String(100), unique=True, nullable=False)
     telefono = Column(String(20), nullable=True)
-    rol = Column(String(20), server_default='user')
+    # Campo legible (compatibilidad) y FK hacia `rol` normalizado
+    rol = Column(String(20), default='user')
+    id_rol = Column(Integer, ForeignKey('rol.id_rol', ondelete='SET NULL'), nullable=True)
+    rol_obj = relationship('Rol', back_populates='usuarios')
     password = Column(String(255), nullable=False)
     
     # Relación con Resultado para almacenar historial de búsqueda
     resultados = relationship("Resultado", back_populates="usuario", cascade="all, delete-orphan")
+    reviews = relationship("Review", back_populates="usuario", cascade="all, delete-orphan")
     
 
 # Modelo para Review, que permite valoraciones y comentarios de usuarios sobre las empresas
@@ -122,7 +215,7 @@ class Review(Base):
     fecha = Column(DateTime, default=datetime.utcnow)
     
     # Relaciones con Usuario y Empresa
-    usuario = relationship("Usuario")
+    usuario = relationship("Usuario", back_populates="reviews")
     empresa = relationship("Empresa", back_populates="reviews")
 
 

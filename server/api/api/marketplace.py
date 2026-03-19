@@ -23,7 +23,7 @@ def get_marketplace_item(id_marketplace: int, db: Session = Depends(get_db)):
     return item
 
 # Crear producto/servicio
-@router.post("/marketplace", response_model=MarketplaceResponse)
+@router.post("/marketplace", response_model=MarketplaceResponse, status_code=201)
 def create_marketplace(item: MarketplaceCreate, db: Session = Depends(get_db)):
     db_item = Marketplace(**item.dict())
     db.add(db_item)

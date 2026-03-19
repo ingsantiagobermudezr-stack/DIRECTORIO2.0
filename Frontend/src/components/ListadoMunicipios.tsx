@@ -55,7 +55,7 @@ export function ListadoMunicipio({ municipios }: Props) {
         setList((prev) => [...prev, data]);
       } else {
         // TODO: editar
-        const { data } = await axiosInstance(
+        const { data: _data } = await axiosInstance(
           `/municipios/${formData.id_municipio}`,
           {
             method: "PUT",
@@ -77,8 +77,7 @@ export function ListadoMunicipio({ municipios }: Props) {
       setIsLoading(false);
     } catch (error) {
       if (error instanceof AxiosError) {
-        const message =
-          error.response?.data?.detail || "Ocurrio un error inesperado.";
+        console.error(error.response?.data?.detail || "Ocurrio un error inesperado.");
       }
     } finally {
       if (form.current) {
@@ -89,7 +88,7 @@ export function ListadoMunicipio({ municipios }: Props) {
 
   const onDelete = async (id: number) => {
     setOnDeleting(id);
-    const { data } = await axiosInstance(`/municipios/${id}`, {
+    const { data: _data } = await axiosInstance(`/municipios/${id}`, {
       method: "DELETE",
     });
 

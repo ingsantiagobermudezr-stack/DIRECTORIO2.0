@@ -14,7 +14,7 @@ export const UsuarioAdmin: React.FC = () => {
                     { key: "telefono", label: "Teléfono" },
                     { key: "rol", label: "Rol" },
                 ]}
-                endpoint="http://localhost:8000/usuarios"
+                endpoint="/api/usuarios"
                 primaryKey="id_usuario"
                 onCreate={() => navigate("/admin/usuarios/agregar")}
                 onEdit={(id: number) => navigate(`/admin/usuarios/editar/${id}`)}

@@ -31,7 +31,7 @@ export function EnviarCalificacion({ id_usuario, id_empresa }: Props) {
     }
 
     try {
-      const { data } = await axiosInstance("/reviews", {
+      const { data: _data } = await axiosInstance("/reviews", {
         method: "POST",
         data: {
           ...formDataObj,
@@ -40,7 +40,7 @@ export function EnviarCalificacion({ id_usuario, id_empresa }: Props) {
           id_usuario,
         },
       });
-      console.log(data);
+      console.log(_data);
 
       setStatusForm((prev) => ({
         ...prev,
@@ -52,13 +52,13 @@ export function EnviarCalificacion({ id_usuario, id_empresa }: Props) {
       navigate("/");
     } catch (error) {
       if (error instanceof AxiosError) {
-        const message =
+        const _message =
           error.response?.data?.detail || "Ocurrio un error inesperado.";
 
         setStatusForm((prev) => ({
           ...prev,
           isLoading: false,
-          error: message,
+          error: _message,
         }));
       }
     }

@@ -1,0 +1,64 @@
+.marketplace-section {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.marketplace-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.mp-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(18, 38, 63, 0.06);
+  padding: 16px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mp-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 30px rgba(18, 38, 63, 0.12);
+}
+
+.mp-card img {
+  width: 160px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.mp-card .mp-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.mp-card .mp-desc {
+  color: #4b5563;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.mp-card .mp-price {
+  color: #0b63d4;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.mp-actions { display:flex; gap:8px; }
+
+.mp-empty { text-align:center; color:#6b7280; width:100%; }
+
+@media (min-width: 768px) {
+  .mp-grid { grid-template-columns: repeat(3, 1fr); }
+}

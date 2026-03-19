@@ -37,20 +37,19 @@ export function InicioSesion() {
         success: true,
         error: null,
       }));
-
       document.cookie = `token=${data.access_token};  path=/; SameSite=None; Secure`;
       document.cookie = `rol=${data.rol};  path=/; SameSite=None; Secure`;
       document.cookie = `id_usuario=${data.id_usuario};  path=/; SameSite=None; Secure`;
       navigate("/");
     } catch (error) {
       if (error instanceof AxiosError) {
-        const message =
+        const _message =
           error.response?.data?.detail || "Ocurrio un error inesperado.";
 
         setStatusForm((prev) => ({
           ...prev,
           isLoading: false,
-          error: message,
+          error: _message,
         }));
       }
     }

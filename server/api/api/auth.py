@@ -1,24 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from typing import Dict
+import os
 
 from api.models import models
 from api.db import conexion
 from api.schemas.schemas import UsuarioCreate, SigninResponse
+from sqlalchemy.orm import Session
 
 
 # Configuración de seguridad
-SECRET_KEY = "supersecretkey"  # Cambia esto por una clave segura
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")  # usar variable de entorno en producción
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Configuración de bcrypt para encriptar contraseñas
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/signin")
 
 router = APIRouter()
 
@@ -43,7 +45,6 @@ def get_user(db: Session, correo: str):
     return db.query(models.Usuario).filter(models.Usuario.correo == correo).first()
 
 def authenticate_user(db: Session, correo: str, password: str):
-    print(correo,password )
     user = get_user(db, correo)
     if not user:
         return False
@@ -63,19 +64,14 @@ async def login(form_data: Dict, db: Session = Depends(conexion.get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user_sub = {
-        "rol": user.rol,
-        "id_usuario": user.id_usuario,
-        "correo": user.correo,
-    }
-
-    access_token = create_access_token(data={"sub": user_sub})
-    return {"access_token": access_token, "rol": user.rol, "id_usuario": user.id_usuario}
+    # Crear token con el correo en el campo `sub` para facilitar la recuperación
+    user_sub = user.correo
+    access_token = create_access_token(data={"sub": user_sub, "rol": user.rol, "id_usuario": user.id_usuario, "id_rol": getattr(user, 'id_rol', None)})
+    return {"access_token": access_token, "rol": user.rol, "id_usuario": user.id_usuario, "id_rol": getattr(user, 'id_rol', None)}
 
 @router.post("/signup", response_model=SigninResponse)
 def create_usuario(usuario: UsuarioCreate, db: Session = Depends(conexion.get_db)):
-    print(usuario)
-    
+    # Crear usuario con password hasheada
     data_usuario = {
         **usuario.dict(),
         "telefono": '',
@@ -83,21 +79,12 @@ def create_usuario(usuario: UsuarioCreate, db: Session = Depends(conexion.get_db
     }
 
     db_usuario = models.Usuario(**data_usuario)
-
-
     db.add(db_usuario)
     db.commit()
     db.refresh(db_usuario)
 
-    user_sub = {
-        "rol": db_usuario.rol,
-        "id_usuario": db_usuario.id_usuario,
-        "correo": db_usuario.correo,
-    }
-
-    access_token = create_access_token(data={"sub": user_sub})
-    print(access_token)
-    return {"access_token": access_token, "rol": db_usuario.rol, "id_usuario": db_usuario.id_usuario }
+    access_token = create_access_token(data={"sub": db_usuario.correo, "rol": db_usuario.rol, "id_usuario": db_usuario.id_usuario, "id_rol": getattr(db_usuario, 'id_rol', None)})
+    return {"access_token": access_token, "rol": db_usuario.rol, "id_usuario": db_usuario.id_usuario, "id_rol": getattr(db_usuario, 'id_rol', None) }
 
 # Función para verificar el token y obtener el usuario actual
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(conexion.get_db)):
@@ -108,12 +95,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        correo: str = payload.get("sub")
+        if correo is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = get_user(db, username=username)
+    user = get_user(db, correo)
     if user is None:
         raise credentials_exception
     return user
+
+
+async def require_admin(current_user: models.Usuario = Depends(get_current_user)):
+    # Permitimos administrador por nombre de rol o por relación normalizada
+    if getattr(current_user, 'rol', None) == 'admin':
+        return current_user
+    if getattr(current_user, 'rol_obj', None) and getattr(current_user.rol_obj, 'nombre', None) == 'admin':
+        return current_user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Se requieren privilegios de administrador")

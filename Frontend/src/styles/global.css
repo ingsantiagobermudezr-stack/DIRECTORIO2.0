@@ -1,0 +1,45 @@
+:root{
+  --color-primary: #ffcc00;
+  --color-primary-600: #e6b800;
+  --color-accent: #0b63d4;
+  --color-bg: #f8fafc;
+  --color-muted: #6b7280;
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --shadow-soft: 0 6px 18px rgba(18,38,63,0.06);
+  --max-width: 1200px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;padding:0;background:var(--color-bg);color:#0f172a}
+body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;font-size:16px;line-height:1.4}
+
+.container{max-width:var(--max-width);margin:0 auto;padding:0 16px}
+
+button{font-family:inherit}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--radius-md);border:0;cursor:pointer;transition:all .15s cubic-bezier(.2,.9,.2,1);box-shadow:var(--shadow-soft);font-weight:600}
+.btn:active{transform:translateY(1px);box-shadow:0 4px 12px rgba(18,38,63,0.08)}
+.btn[disabled],.btn:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
+
+.btn-primary{background:linear-gradient(180deg,var(--color-primary),var(--color-primary-600));color:#08121a}
+.btn-primary:hover{filter:brightness(.95)}
+.btn-secondary{background:var(--color-accent);color:#fff}
+.btn-secondary:hover{filter:brightness(.95)}
+.btn-ghost{background:transparent;border:1px solid rgba(15,23,42,0.06);color:var(--color-muted)}
+.btn-ghost:hover{background:rgba(15,23,42,0.02)}
+.btn:focus{outline:none;box-shadow:0 0 0 4px rgba(255,204,0,0.12)}
+
+.icon{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center}
+
+h1,h2,h3{color:#0b1220}
+
+/* Forms */
+input,textarea,select{border:1px solid #e6e9ef;padding:10px;border-radius:6px}
+
+/* Utility spacing */
+.mt-2{margin-top:8px}.mb-2{margin-bottom:8px}.mb-4{margin-bottom:16px}
+
+/* Header tweaks */
+header{background:var(--color-primary);}
+header h1{color:#08121a}

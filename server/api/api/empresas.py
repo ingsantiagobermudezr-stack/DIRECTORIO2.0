@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from api.schemas.schemas import EmpresaCreate, EmpresaResponse, EmpresaResponseGet
@@ -8,9 +9,14 @@ from api.db.conexion import get_db
 router = APIRouter()
 
 # Crear empresa
-@router.post("/empresas/", response_model=EmpresaResponse)
+@router.post("/empresas/", response_model=EmpresaResponse, status_code=201)
 def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
     try:
+        # Verificar unicidad de NIT
+        existing_nit = db.query(Empresa).filter(Empresa.nit == empresa.nit).first()
+        if existing_nit:
+            raise HTTPException(status_code=409, detail="Ya existe una empresa con este NIT")
+
         # Verificar si existe la categoría
         categoria = db.query(Categoria).filter(Categoria.id_categoria == empresa.id_categoria).first()
         if not categoria:
@@ -29,9 +35,17 @@ def create_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
         return {"success": True, "id_empresa": db_empresa.id_empresa}
     except HTTPException as he:
         raise he
+    except IntegrityError as ie:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Conflicto al crear empresa: posible NIT duplicado")
     except Exception as e:
+        # Rollback y normalizar como conflicto de NIT (evita exponer detalles DB)
+        try:
+            db.rollback()
+        except Exception:
+            pass
         print(f"Error al crear empresa: {str(e)}")
-        raise HTTPException(status_code=400, detail="Error al crear la empresa. Verifica los datos proporcionados.")
+        raise HTTPException(status_code=409, detail="Conflicto al crear empresa: posible NIT duplicado")
 
 # Leer todas las empresas
 @router.get("/empresas/", response_model=list[EmpresaResponseGet])
@@ -47,8 +61,6 @@ def read_empresas(skip: int = 0, limit: int = 10,
     query = query.options(joinedload(Empresa.categoria))
     query = query.options(joinedload(Empresa.municipio))
 
-    
-    print(query.all())
     return query.offset(skip).limit(limit).all()
 
 # Leer una empresa específica

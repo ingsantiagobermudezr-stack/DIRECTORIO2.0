@@ -1,10 +1,13 @@
-import { c as createComponent, r as renderTemplate, a as renderComponent, b as createAstro, m as maybeRenderHead } from '../chunks/astro/server_CyHZ0_af.mjs';
+/* empty css                                 */
+import { c as createComponent, r as renderTemplate, e as renderComponent, d as createAstro, m as maybeRenderHead } from '../chunks/astro/server_C1ltPUuV.mjs';
 import 'kleur/colors';
-import { a as axiosInstance, n as navigate, $ as $$GlobalLayout } from '../chunks/GlobalLayout_Dz_xDbbY.mjs';
+import { $ as $$GlobalLayout } from '../chunks/GlobalLayout_DDrasiYq.mjs';
 import { jsxs, jsx } from 'react/jsx-runtime';
 import { useState } from 'react';
 /* empty css                                 */
+import { a as axiosInstance } from '../chunks/axiosInstance_DTElsxCY.mjs';
 import { AxiosError } from 'axios';
+import { n as navigate } from '../chunks/router_vN4ZPF0m.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
 
@@ -115,10 +118,10 @@ const $$Index = createComponent(($$result, $$props, $$slots) => {
   if (token) {
     return Astro2.redirect("/");
   }
-  return renderTemplate`${renderComponent($$result, "GlobalLayout", $$GlobalLayout, { "data-astro-cid-gbebtaey": true }, { "default": ($$result2) => renderTemplate`  ${maybeRenderHead()}<div class="content-form-inicio-sesion" data-astro-cid-gbebtaey> <section data-astro-cid-gbebtaey> <h2 data-astro-cid-gbebtaey>Crear cuenta</h2> ${renderComponent($$result2, "CrearCuenta", CrearCuenta, { "client:load": true, "client:component-hydration": "load", "client:component-path": "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/components/Formularios/CrearCuenta", "client:component-export": "CrearCuenta", "data-astro-cid-gbebtaey": true })} <div class="content-crear-cuenta" data-astro-cid-gbebtaey> <span data-astro-cid-gbebtaey>¿Ya tienes una cuenta?</span> <button data-astro-cid-gbebtaey> <a href="/iniciar-sesion" data-astro-cid-gbebtaey> Inicia sesión aquí</a> </button> </div> </section> </div> ` })}`;
-}, "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/pages/crear-cuenta/index.astro", void 0);
+  return renderTemplate`${renderComponent($$result, "GlobalLayout", $$GlobalLayout, { "data-astro-cid-gbebtaey": true }, { "default": ($$result2) => renderTemplate`  ${maybeRenderHead()}<div class="content-form-inicio-sesion" data-astro-cid-gbebtaey> <section data-astro-cid-gbebtaey> <h2 data-astro-cid-gbebtaey>Crear cuenta</h2> ${renderComponent($$result2, "CrearCuenta", CrearCuenta, { "client:load": true, "client:component-hydration": "load", "client:component-path": "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/components/Formularios/CrearCuenta", "client:component-export": "CrearCuenta", "data-astro-cid-gbebtaey": true })} <div class="content-crear-cuenta" data-astro-cid-gbebtaey> <span data-astro-cid-gbebtaey>¿Ya tienes una cuenta?</span> <button data-astro-cid-gbebtaey> <a href="/iniciar-sesion" data-astro-cid-gbebtaey> Inicia sesión aquí</a> </button> </div> </section> </div> ` })}`;
+}, "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/pages/crear-cuenta/index.astro", void 0);
 
-const $$file = "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/pages/crear-cuenta/index.astro";
+const $$file = "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/pages/crear-cuenta/index.astro";
 const $$url = "/crear-cuenta";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({

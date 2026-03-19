@@ -1,11 +1,13 @@
-import { c as createComponent, r as renderTemplate, a as renderComponent, b as createAstro, m as maybeRenderHead } from '../chunks/astro/server_CyHZ0_af.mjs';
+/* empty css                                 */
+import { c as createComponent, r as renderTemplate, e as renderComponent, m as maybeRenderHead } from '../chunks/astro/server_C1ltPUuV.mjs';
 import 'kleur/colors';
-import { a as axiosInstance, n as navigate, $ as $$GlobalLayout } from '../chunks/GlobalLayout_Dz_xDbbY.mjs';
+import { $ as $$GlobalLayout } from '../chunks/GlobalLayout_DDrasiYq.mjs';
 import { jsxs, jsx } from 'react/jsx-runtime';
 import { useState } from 'react';
 /* empty css                                 */
+import { a as axiosInstance } from '../chunks/axiosInstance_DTElsxCY.mjs';
 import { AxiosError } from 'axios';
-/* empty css                                 */
+import { n as navigate } from '../chunks/router_vN4ZPF0m.mjs';
 export { renderers } from '../renderers.mjs';
 
 function InicioSesion() {
@@ -40,11 +42,11 @@ function InicioSesion() {
       navigate("/");
     } catch (error) {
       if (error instanceof AxiosError) {
-        const message = error.response?.data?.detail || "Ocurrio un error inesperado.";
+        const _message = error.response?.data?.detail || "Ocurrio un error inesperado.";
         setStatusForm((prev) => ({
           ...prev,
           isLoading: false,
-          error: message
+          error: _message
         }));
       }
     }
@@ -81,18 +83,11 @@ function InicioSesion() {
   ] });
 }
 
-const $$Astro = createAstro();
 const $$Index = createComponent(($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
-  Astro2.self = $$Index;
-  const token = (Astro2.cookies.get("token") || {})?.value;
-  if (token) {
-    return Astro2.redirect("/");
-  }
-  return renderTemplate`${renderComponent($$result, "GlobalLayout", $$GlobalLayout, { "title": "Iniciar sesi\xF3n", "data-astro-cid-7n55ocdl": true }, { "default": ($$result2) => renderTemplate`  ${maybeRenderHead()}<div class="content-form-inicio-sesion" data-astro-cid-7n55ocdl> <section data-astro-cid-7n55ocdl> <h2 data-astro-cid-7n55ocdl>Iniciar sesión</h2> ${renderComponent($$result2, "InicioSesion", InicioSesion, { "client:load": true, "client:component-hydration": "load", "client:component-path": "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/components/Formularios/InicioSesion", "client:component-export": "InicioSesion", "data-astro-cid-7n55ocdl": true })} <div class="content-crear-cuenta" data-astro-cid-7n55ocdl> <span data-astro-cid-7n55ocdl>¿Aún no tienes una cuenta?</span> <button data-astro-cid-7n55ocdl> <a href="/crear-cuenta" data-astro-cid-7n55ocdl> Regístrate aquí </a> </button> </div> </section> </div> ` })}`;
-}, "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/pages/iniciar-sesion/index.astro", void 0);
+  return renderTemplate`${renderComponent($$result, "GlobalLayout", $$GlobalLayout, { "title": "Iniciar sesi\xF3n", "auth": true }, { "default": ($$result2) => renderTemplate` ${maybeRenderHead()}<section class="flex flex-col items-center justify-center py-12"> <h2 class="text-xl font-semibold mb-6">Iniciar sesión</h2> ${renderComponent($$result2, "InicioSesion", InicioSesion, { "client:load": true, "client:component-hydration": "load", "client:component-path": "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/components/Formularios/InicioSesion", "client:component-export": "InicioSesion" })} </section> ` })}`;
+}, "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/pages/iniciar-sesion/index.astro", void 0);
 
-const $$file = "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/pages/iniciar-sesion/index.astro";
+const $$file = "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/pages/iniciar-sesion/index.astro";
 const $$url = "/iniciar-sesion";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({

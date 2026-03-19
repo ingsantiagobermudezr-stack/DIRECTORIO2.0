@@ -45,7 +45,7 @@ export function Search() {
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Buscar empresas, servicios y más"
+          placeholder="Buscar en el directorio, servicios y más"
           onChange={onChangeSearch}
           value={search}
         />

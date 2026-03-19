@@ -51,6 +51,12 @@ routers = [
     ("api.api.review", "/api", "Reviews"),
     ("api.api.usuarios", "/api", "Usuarios"),
     ("api.api.marketplace", "/api", "Marketplace"),
+    ("api.api.roles", "/api", "Roles"),
+    ("api.api.permisos", "/api", "Permisos"),
+    ("api.api.paises", "/api", "Paises"),
+    ("api.api.productos", "/api", "Productos"),
+    ("api.api.auditoria", "/api", "Auditoria"),
+    ("api.api.admin", "/api", "Admin"),
 ]
 
 for module_path, prefix, tag in routers:
@@ -68,20 +74,37 @@ for module_path, prefix, tag in routers:
         # No elevar aquí para permitir arrancar la app en entornos sin todas las
         # dependencias; reportamos la excepción y seguimos.
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Crear tablas y aplicar un seed mínimo en tiempo de arranque.
+
+    La creación del engine se realiza mediante `get_engine()` para evitar
+    importar drivers adicionales en tiempo de importación del paquete.
+    """
+    try:
+        from api.db.conexion import get_engine, Base
+        from sqlalchemy.orm import sessionmaker
+
+        logger.info("Creando tablas (si no existen) en la base de datos")
+        engine = get_engine()
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logger.exception("Error al inicializar la base de datos: %s", e)
+        # No elevar: permitimos arrancar la app incluso si la BD no está disponible
+
     # Seed básico para tests locales: asegurar que existan categorías (1..4)
     try:
-        from api.db.conexion import SessionLocal
         from api.models.models import Categoria, Departamento, Municipio
 
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
         db = SessionLocal()
         try:
-            # Crear categorías 1..4 si no existen
             for cid in range(1, 5):
                 exists = db.query(Categoria).filter(Categoria.id_categoria == cid).first()
                 if not exists:
                     db.add(Categoria(id_categoria=cid, nombre=f"Categoria {cid}", descripcion="Seed"))
 
-            # Crear departamento y municipio (id_departamento=1, id_municipio=1)
             dep = db.query(Departamento).filter(Departamento.id_departamento == 1).first()
             if not dep:
                 dep = Departamento(id_departamento=1, nombre="Departamento Seed")
@@ -97,7 +120,6 @@ for module_path, prefix, tag in routers:
             db.close()
     except Exception as e:
         logger.exception("Error insertando seed inicial: %s", e)
-        # No abortar el arranque por seed failure, pero reportarlo
 
 
 @app.get("/", tags=["root"])

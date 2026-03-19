@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosInstance";
 import {
   Plus,
   Edit,
@@ -41,9 +41,7 @@ export const TableAdmin: React.FC<TableAdminProps> = ({
   const fetchData = async () => {
     try {
       const skip = (currentPage - 1) * itemsPerPage;
-      const response = await axios.get<any[]>(
-        `${endpoint}?skip=${skip}&limit=${itemsPerPage}`
-      );
+      const response = await axiosInstance.get<any[]>(`${endpoint}`, { params: { skip, limit: itemsPerPage } });
       setData(response.data);
     } catch (error) {
       console.error(`Error fetching ${tableName}:`, error);
@@ -52,7 +50,7 @@ export const TableAdmin: React.FC<TableAdminProps> = ({
 
   const handleDelete = async (id: number) => {
     try {
-      await axios.delete(`${endpoint}/${id}`);
+      await axiosInstance.delete(`${endpoint}/${id}`);
       fetchData();
       if (onDelete) onDelete(id);
     } catch (error) {

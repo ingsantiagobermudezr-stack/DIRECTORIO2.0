@@ -13,9 +13,9 @@ interface CardEmpresaProps {
 const CardEmpresa: React.FC<CardEmpresaProps> = ({ empresas, listadoCategorias = [] }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {empresas.map((empresa, index) => (
+      {empresas.map((empresa) => (
         <div
-          key={index}
+          key={empresa.id_empresa ?? empresa.nombre}
           className="border rounded-xl shadow-md bg-white p-6 flex flex-col items-start"
         >
           <img
@@ -25,10 +25,10 @@ const CardEmpresa: React.FC<CardEmpresaProps> = ({ empresas, listadoCategorias =
           />
           <h2 className="text-xl font-bold mb-2">{empresa.nombre}</h2>
           <p><strong>NIT:</strong> {empresa.nit}</p>
-          <p><strong>Email:</strong> {empresa.email}</p>
+          <p><strong>Email:</strong> {empresa.correo || empresa.email}</p>
           <p><strong>Dirección:</strong> {empresa.direccion}</p>
           <p><strong>Teléfono:</strong> {empresa.telefono}</p>
-          <p><strong>Municipio:</strong> {empresa.municipio}</p>
+          <p><strong>Municipio:</strong> {empresa.municipio?.nombre || empresa.municipio || "-"}</p>
 
           {/* Selector de categorías */}
           <div className="mt-4">

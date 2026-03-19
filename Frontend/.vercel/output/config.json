@@ -16,6 +16,106 @@
 			"dest": "_render"
 		},
 		{
+			"src": "^\\/admin\\/categoria\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/categoria\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/categoria\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/departamentos\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/departamentos\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/departamentos\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/empresas\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/empresas\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/empresas\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/municipios\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/municipios\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/municipios\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/publicidad\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/publicidad\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/publicidad\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/resultados\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/resultados\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/resultados\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/reviews\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/reviews\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/reviews\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/usuarios\\/agregar\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/usuarios\\/editar\\/([^/]+?)\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/usuarios\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/admin\\/?$",
+			"dest": "_render"
+		},
+		{
 			"src": "^\\/contacto\\/?$",
 			"dest": "_render"
 		},
@@ -24,7 +124,15 @@
 			"dest": "_render"
 		},
 		{
+			"src": "^\\/empresas\\/categorias\\/?$",
+			"dest": "_render"
+		},
+		{
 			"src": "^\\/empresas\\/crear\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/empresas\\/municipios\\/?$",
 			"dest": "_render"
 		},
 		{
@@ -33,6 +141,18 @@
 		},
 		{
 			"src": "^\\/iniciar-sesion\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/marketplace\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/mi-cuenta\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/terminos-condiciones\\/?$",
 			"dest": "_render"
 		},
 		{

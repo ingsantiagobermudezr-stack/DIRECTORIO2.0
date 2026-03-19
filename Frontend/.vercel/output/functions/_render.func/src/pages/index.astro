@@ -1,18 +1,23 @@
 ---
 import GlobalLayout from "../layout/GlobalLayout.astro";
+import CardEmpresa from "../components/commons/CardEmpresa"; // 👈 singular
 import { axiosInstance } from "../utils/axiosInstance";
-import { CardEmpresas } from "../components/commons/CardEmpresa";
 
-const { data } = await axiosInstance("/empresas", {
-  method: "GET",
-  params: { skip: 0, limit: 50 },
-});
+let empresas = [];
 
-console.log(data);
+try {
+  const res = await axiosInstance("/empresas", { method: "GET" });
+  empresas = res.data;
+} catch (error) {
+  console.error("Error al cargar empresas:", error);
+}
 ---
 
-<GlobalLayout title="Páginas amarrillas">
-  <div>
-    <CardEmpresas empresas={data} client:load />
-  </div>
+<GlobalLayout title="Directorio de Empresas">
+  <section class="py-12 px-6 bg-gray-50 rounded-xl">
+    <h1 class="text-3xl font-extrabold mb-8 text-center text-gray-900">
+      Directorio de Empresas
+    </h1>
+    <CardEmpresa empresas={empresas} client:load />  
+  </section>
 </GlobalLayout>

@@ -11,12 +11,12 @@ try {
 } catch (error) {
   console.error("Error al cargar empresas:", error);
 }
----
 
 <GlobalLayout title="Directorio de Empresas">
+<GlobalLayout title="Directorio">
   <section class="py-12 px-6 bg-gray-50 rounded-xl">
     <h1 class="text-3xl font-extrabold mb-8 text-center text-gray-900">
-      Directorio de Empresas
+      Directorio
     </h1>
     <CardEmpresa empresas={empresas} client:load />  
   </section>

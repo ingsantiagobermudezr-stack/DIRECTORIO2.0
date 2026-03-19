@@ -1,6 +1,7 @@
-import { c as createComponent, r as renderTemplate, a as renderComponent, m as maybeRenderHead } from '../chunks/astro/server_CyHZ0_af.mjs';
+/* empty css                                 */
+import { c as createComponent, r as renderTemplate, e as renderComponent, m as maybeRenderHead } from '../chunks/astro/server_C1ltPUuV.mjs';
 import 'kleur/colors';
-import { $ as $$GlobalLayout } from '../chunks/GlobalLayout_Dz_xDbbY.mjs';
+import { $ as $$GlobalLayout } from '../chunks/GlobalLayout_DDrasiYq.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
 
@@ -9,9 +10,9 @@ const $$Index = createComponent(($$result, $$props, $$slots) => {
 ¿Quieres que tu negocio destaque? 🚀 <br data-astro-cid-gdogca4m><br data-astro-cid-gdogca4m> </strong>
 Escríbenos a <a href="mailto:paginasamarillas360@gmail.com" data-astro-cid-gdogca4m>paginasamarillas360@gmail.com</a> y sé parte del directorio que conecta empresas con clientes. <br data-astro-cid-gdogca4m><br data-astro-cid-gdogca4m> ¡Publicar
     es fácil!</span> ` })}`;
-}, "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/pages/contacto/index.astro", void 0);
+}, "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/pages/contacto/index.astro", void 0);
 
-const $$file = "/Users/alexocsa/Documents/dev/projects/directorio-empresas/Frontend/src/pages/contacto/index.astro";
+const $$file = "C:/Users/santi/Downloads/DIRECTORIO2.0/DIRECTORIO2.0/Frontend/src/pages/contacto/index.astro";
 const $$url = "/contacto";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({

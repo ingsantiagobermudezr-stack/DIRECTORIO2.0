@@ -1,21 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { axiosInstance } from "../utils/axiosInstance";
+import type { MarketplaceResponse } from "../types/marketplace";
+import "../styles/marketplace.css";
+import "../styles/botones.css";
 
-export interface Producto {
-  id_marketplace: number;
-  nombre: string;
-  descripcion: string;
-  precio: number;
-  imagen_url: string;
-  estado: string;
-  id_empresa: number;
-  id_categoria?: number;
-  fecha_publicacion?: string;
-}
-
-export function Marketplace({ rol = "user" }: { rol?: string }) {
-  const [productos, setProductos] = useState<Producto[]>([]);
+export function Marketplace({ rol = "user", productos: initialProductos = [] }: { rol?: string; productos?: MarketplaceResponse[] }) {
+  const [productos, setProductos] = useState<MarketplaceResponse[]>(initialProductos as MarketplaceResponse[]);
   const [search, setSearch] = useState("");
   const [minPrecio, setMinPrecio] = useState(0);
   const [maxPrecio, setMaxPrecio] = useState(99999);
@@ -77,8 +68,16 @@ export function Marketplace({ rol = "user" }: { rol?: string }) {
     setLoading(false);
   };
 
+  const formatPrice = (value?: number | null) => {
+    try {
+      return (value ?? 0).toLocaleString("es-CO", { style: "currency", currency: "COP" });
+    } catch {
+      return `$${value ?? 0}`;
+    }
+  };
+
   return (
-    <section className="marketplace-section py-8 px-4">
+    <section className="marketplace-section py-8 px-4" aria-label="Marketplace">
       <h2 className="text-3xl font-bold mb-6 text-center">Marketplace</h2>
       {rol === "admin" && (
         <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg shadow p-4 mb-8 max-w-xl mx-auto flex flex-col gap-3">
@@ -87,17 +86,18 @@ export function Marketplace({ rol = "user" }: { rol?: string }) {
           <textarea name="descripcion" value={form.descripcion} onChange={handleChange} placeholder="Descripción" required className="border rounded px-3 py-2" />
           <input name="precio" type="number" value={form.precio} onChange={handleChange} placeholder="Precio" required min={0} className="border rounded px-3 py-2" />
           <input name="imagen_url" value={form.imagen_url} onChange={handleChange} placeholder="URL de imagen" className="border rounded px-3 py-2" />
-          <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition">Agregar</button>
+          <button type="submit" className="btn btn-primary">Agregar</button>
           {error && <div className="text-red-500 text-sm">{error}</div>}
         </form>
       )}
-      <div className="flex flex-wrap gap-4 mb-8 justify-center">
+      <div className="marketplace-filters">
         <input
           type="text"
           placeholder="Buscar producto..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="border rounded px-3 py-2 w-48"
+          aria-label="Buscar productos"
         />
         <input
           type="number"
@@ -106,6 +106,7 @@ export function Marketplace({ rol = "user" }: { rol?: string }) {
           min={0}
           onChange={e => setMinPrecio(Number(e.target.value))}
           className="border rounded px-3 py-2 w-32"
+          aria-label="Precio mínimo"
         />
         <input
           type="number"
@@ -114,27 +115,30 @@ export function Marketplace({ rol = "user" }: { rol?: string }) {
           min={0}
           onChange={e => setMaxPrecio(Number(e.target.value))}
           className="border rounded px-3 py-2 w-32"
+          aria-label="Precio máximo"
         />
       </div>
       {loading ? (
         <div className="text-center text-blue-500">Cargando...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mp-grid">
           {productosFiltrados.length === 0 ? (
-            <div className="col-span-3 text-center text-gray-500">No se encontraron productos.</div>
+            <div className="mp-empty">No se encontraron productos.</div>
           ) : (
             productosFiltrados.map((p) => (
-              <div key={p.id_marketplace} className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center">
-                <img src={p.imagen_url} alt={p.nombre} className="w-32 h-32 object-cover rounded mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{p.nombre}</h3>
-                <p className="text-gray-600 mb-2">{p.descripcion}</p>
-                <p className="text-lg font-bold text-blue-600 mb-2">${p.precio}</p>
+              <article key={p.id_marketplace} className="mp-card" role="article" aria-labelledby={`mp-${p.id_marketplace}`}>
+                <img src={p.imagen_url || 'https://via.placeholder.com/160x120?text=Sin+imagen'} alt={p.nombre || 'Imagen del producto'} />
+                <h3 id={`mp-${p.id_marketplace}`} className="mp-name">{p.nombre}</h3>
+                <p className="mp-desc">{p.descripcion}</p>
+                <div className="mp-price">{formatPrice(p.precio ?? 0)}</div>
                 <span className="text-sm text-gray-500 mb-2">ID Empresa: {p.id_empresa}</span>
-                {rol === "admin" && (
-                  <button className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition mb-2" onClick={() => handleDelete(p.id_marketplace)}>Eliminar</button>
-                )}
-                <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Comprar</button>
-              </div>
+                <div className="mp-actions">
+                  {rol === "admin" && (
+                    <button aria-label={`Eliminar ${p.nombre}`} className="btn-delete" onClick={() => handleDelete(p.id_marketplace)}>Eliminar</button>
+                  )}
+                  <button aria-label={`Comprar ${p.nombre}`} className="btn btn-secondary">Comprar</button>
+                </div>
+              </article>
             ))
           )}
         </div>

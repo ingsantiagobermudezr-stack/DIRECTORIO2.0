@@ -28,7 +28,7 @@ button {
 }
 
 main {
-  padding: 15px 20px;
+  padding: 15px 20px 60px;
 }
 
 a {
@@ -86,4 +86,37 @@ a {
 
 .navbar a:hover {
   color: #d65c00; /* Color de hover */
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg); /* Comienza desde 0 grados */
+  }
+  100% {
+    transform: rotate(360deg); /* Gira hasta 360 grados */
+  }
+}
+
+.custom-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 30px;
+  background: #ffcc00;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.custom-footer p {
+  text-align: center;
+}
+
+.custom-footer ul {
+  list-style-type: none;
 }

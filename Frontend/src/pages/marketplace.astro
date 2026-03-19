@@ -1,6 +1,6 @@
 ---
-import { Marketplace } from "../components/Marketplace";
-import { axiosInstance } from "../utils/axiosInstance";
+import { Marketplace as MarketplaceComponent } from "../components/Marketplace";
+import axiosInstance from "../utils/axiosInstance";
 
 let productos = [];
 try {
@@ -13,4 +13,4 @@ try {
 const rol = Astro.cookies.get("rol")?.value || "user";
 ---
 
-<Marketplace productos={productos} rol={rol} client:load />
+<MarketplaceComponent productos={productos} rol={rol} client:load />

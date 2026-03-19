@@ -1,0 +1,8 @@
+---
+import PermisoForm from "../../../components/admin/permisos/PermisoForm";
+import GlobalLayout from "../../../layout/GlobalLayout.astro";
+---
+
+<GlobalLayout title="Agregar permiso" auth>
+  <PermisoForm client:load />
+</GlobalLayout>

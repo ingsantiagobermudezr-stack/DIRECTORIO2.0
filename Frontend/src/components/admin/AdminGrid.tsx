@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, SortAsc, SortDesc } from "lucide-react";
+import axiosInstance from "../../utils/axiosInstance";
 
 const adminSections = [
     { name: "Resultados", path: "/admin/resultados" },
@@ -7,6 +8,8 @@ const adminSections = [
   { name: "Publicidad", path: "/admin/publicidad" },
   { name: "Departamentos", path: "/admin/departamentos" },
   { name: "Empresas", path: "/admin/empresas" },
+  { name: "Roles", path: "/admin/roles" },
+  { name: "Permisos", path: "/admin/permisos" },
   { name: "Reviews", path: "/admin/reviews" },
   { name: "Municipios", path: "/admin/municipios" },
   { name: "Usuarios", path: "/admin/usuarios" },
@@ -15,6 +18,15 @@ const adminSections = [
 export const AdminGrid: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sorted, setSorted] = useState<boolean>(false);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    axiosInstance
+      .get('/api/admin/dashboard')
+      .then(() => { if (mounted) setAuthorized(true); })
+      .catch((err) => { if (mounted) setAuthorized(false); });
+    return () => { mounted = false };
+  }, []);
 
   const filteredSections = adminSections
     .filter((section) =>
@@ -27,6 +39,16 @@ export const AdminGrid: React.FC = () => {
 
   return (
     <div className="min-h-screen p-8">
+      {authorized === false && (
+        <div className="text-center py-12">
+          <p className="text-red-600">No tienes permisos para acceder al panel administrativo.</p>
+          <a href="/iniciar-sesion" className="mt-4 inline-block btn btn-primary">Iniciar sesión</a>
+        </div>
+      )}
+      {authorized === null && (
+        <div className="text-center py-12">Comprobando permisos...</div>
+      )}
+      {authorized === true && (
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center">
           Panel Administrativo
@@ -78,7 +100,8 @@ export const AdminGrid: React.FC = () => {
             </a>
           ))}
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

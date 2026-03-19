@@ -2,10 +2,34 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "command": "./node_modules/.bin/astro dev",
-      "name": "Development server",
+      "name": "backend+frontend (FastAPI + Astro)",
+      "type": "debugpy",
       "request": "launch",
-      "type": "node-terminal"
+      "module": "uvicorn",
+      "args": [
+        "server.api.main:app",
+        "--reload",
+        "--host", "127.0.0.1",
+        "--port", "8000"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "preLaunchTask": "frontend:dev"
+    },
+    {
+      "name": "solo-backend (FastAPI)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "server.api.main:app",
+        "--reload"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

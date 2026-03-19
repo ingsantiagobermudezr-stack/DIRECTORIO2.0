@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, constr, Field
 from typing import Optional
 from datetime import datetime
 
@@ -22,16 +22,15 @@ class MarketplaceResponse(MarketplaceBase):
     id_marketplace: int
     fecha_publicacion: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # Esquemas para Empresa
 class EmpresaBase(BaseModel):
-    nombre: str
-    nit: str
-    correo: str
-    direccion: str
-    telefono: str
+    nombre: constr(min_length=2, max_length=100)
+    nit: constr(min_length=3, max_length=50, pattern=r"^[A-Za-z0-9\-]+$")
+    correo: EmailStr
+    direccion: constr(min_length=3, max_length=255)
+    telefono: constr(min_length=7, max_length=20)
     id_categoria: int
     id_municipio: int
     logo: Optional[str] = None
@@ -57,8 +56,7 @@ class CategoriaResponse(CategoriaBase):
     """
     id_categoria: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # Esquemas para Municipio
 class MunicipioBase(BaseModel):
@@ -74,8 +72,7 @@ class MunicipioResponse(MunicipioBase):
     """
     id_municipio: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # Esquemas para Departamento
 class DepartamentoBase(BaseModel):
@@ -90,8 +87,7 @@ class DepartamentoResponse(DepartamentoBase):
     """
     id_departamento: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # Esquemas para Publicidad
 class PublicidadBase(BaseModel):
@@ -111,29 +107,31 @@ class PublicidadResponse(PublicidadBase):
     """
     id_publicidad: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # Esquemas para Usuario
 class UsuarioBase(BaseModel):
-    nombre: str
-    apellido: str
-    correo: str
-    telefono: Optional[str] = None
+    nombre: constr(min_length=1, max_length=100)
+    apellido: constr(min_length=1, max_length=100)
+    correo: EmailStr
+    telefono: Optional[constr(min_length=7, max_length=20)] = None
     password: Optional[str] = None  # Cambiado a Optional para Response
     rol: Optional[str] = None
+    id_rol: Optional[int] = None
 
 class UsuarioCreate(BaseModel):
-    nombre: str
-    apellido: str
-    correo: str
-    password: str
+    nombre: constr(min_length=1, max_length=100)
+    apellido: constr(min_length=1, max_length=100)
+    correo: EmailStr
+    password: constr(min_length=8, max_length=128)
+    id_rol: Optional[int] = None
 
 class UsuarioUpdate(BaseModel):
     nombre: str
     apellido: str
     correo: str
     rol: str
+    id_rol: Optional[int] = None
 
 class UsuarioResponse(BaseModel):
     """
@@ -145,14 +143,15 @@ class UsuarioResponse(BaseModel):
     correo: str
     telefono: Optional[str] = None
     rol: str
+    id_rol: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class SigninResponse(BaseModel):
     access_token: str
     rol: str
     id_usuario: int
+    id_rol: Optional[int] = None
 
 # Esquemas para Review
 class ReviewBase(BaseModel):
@@ -175,8 +174,7 @@ class ReviewResponse(ReviewBase):
     id_review: int
     usuario: UsuarioBase
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class ReviewResponseCreate(BaseModel):
     """
@@ -187,8 +185,7 @@ class ReviewResponseCreate(BaseModel):
     comentario: str
     calificacion: float
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # Esquemas para Resultado
 class ResultadoBase(BaseModel):
@@ -204,8 +201,85 @@ class ResultadoResponse(ResultadoBase):
     """
     id_resultado: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
+
+
+# Schemas para País, Departamento y Ciudad
+class PaisBase(BaseModel):
+    nombre: str
+    codigo_iso: Optional[str] = None
+
+class PaisResponse(PaisBase):
+    id_pais: int
+
+    model_config = {"from_attributes": True}
+
+class CiudadBase(BaseModel):
+    nombre: str
+    id_departamento: int
+
+class CiudadResponse(CiudadBase):
+    id_ciudad: int
+
+    model_config = {"from_attributes": True}
+
+
+# Schemas para Rol y Permiso
+class PermisoBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+
+class PermisoResponse(PermisoBase):
+    id_permiso: int
+
+    model_config = {"from_attributes": True}
+
+class RolBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+
+class RolCreate(RolBase):
+    permiso_ids: Optional[list[int]] = []
+
+class RolResponse(RolBase):
+    id_rol: int
+    permisos: Optional[list[PermisoResponse]] = []
+
+    model_config = {"from_attributes": True}
+
+
+# Schema para Auditoría
+class AuditoriaBase(BaseModel):
+    tabla: str
+    operacion: str
+    id_registro: Optional[int] = None
+    id_usuario: Optional[int] = None
+    descripcion: Optional[str] = None
+
+class AuditoriaResponse(AuditoriaBase):
+    id_auditoria: int
+    fecha: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# Schemas para Producto
+class ProductoBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    precio: Optional[float] = 0.0
+    stock: Optional[int] = 0
+    sku: Optional[str] = None
+    id_empresa: Optional[int] = None
+
+class ProductoCreate(ProductoBase):
+    pass
+
+class ProductoResponse(ProductoBase):
+    id_producto: int
+    fecha_creacion: datetime
+
+    model_config = {"from_attributes": True}
 
 class EmpresaResponseGet(EmpresaBase):
     """
@@ -215,5 +289,4 @@ class EmpresaResponseGet(EmpresaBase):
     categoria: CategoriaBase 
     municipio: MunicipioBase
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

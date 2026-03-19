@@ -1,4 +1,6 @@
-const SearchBar = () => {
+import React from "react";
+
+const SearchBar: React.FC = () => {
   return (
     <section className="max-w-3xl mx-auto w-full mt-6 md:mt-10">
       <div className="flex items-center bg-white rounded-2xl shadow-lg border border-black/5 overflow-hidden">

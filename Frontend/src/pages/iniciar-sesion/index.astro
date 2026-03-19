@@ -1,65 +1,11 @@
 ---
-import GlobalLayout from "../layout/GlobalLayout.astro";
-import { useState } from "react";
-import axiosInstance from "../utils/axiosInstance";
-
-let email = "";
-let password = "";
-
-const handleSubmit = async (e: Event) => {
-  e.preventDefault();
-
-  try {
-    const res = await axiosInstance.post("/auth/login", {
-      email,
-      password,
-    });
-
-    const { token, rol } = await res.data;
-
-    // guardar en cookies
-    document.cookie = `token=${token}; path=/; SameSite=Strict;`;
-    document.cookie = `rol=${rol}; path=/; SameSite=Strict;`;
-
-    // redirigir al home
-    window.location.href = "/";
-  } catch (err) {
-    console.error("Error al iniciar sesión:", err);
-    alert("Credenciales incorrectas o error en el servidor.");
-  }
-};
+import GlobalLayout from "../../layout/GlobalLayout.astro";
+import { InicioSesion } from "../../components/Formularios/InicioSesion";
 ---
 
 <GlobalLayout title="Iniciar sesión" auth={true}>
   <section class="flex flex-col items-center justify-center py-12">
     <h2 class="text-xl font-semibold mb-6">Iniciar sesión</h2>
-    <form class="w-full max-w-sm space-y-4" onSubmit={handleSubmit}>
-      <div>
-        <label class="block text-sm mb-1">Correo electrónico</label>
-        <input
-          type="email"
-          class="w-full border rounded px-3 py-2"
-          value={email}
-          onInput={(e: any) => (email = e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <label class="block text-sm mb-1">Contraseña</label>
-        <input
-          type="password"
-          class="w-full border rounded px-3 py-2"
-          value={password}
-          onInput={(e: any) => (password = e.target.value)}
-          required
-        />
-      </div>
-      <button
-        type="submit"
-        class="w-full bg-yellow-500 text-black font-semibold py-2 rounded hover:bg-yellow-600 transition"
-      >
-        Iniciar sesión
-      </button>
-    </form>
+    <InicioSesion client:load />
   </section>
 </GlobalLayout>
