@@ -152,6 +152,7 @@ class SigninResponse(BaseModel):
     rol: str
     id_usuario: int
     id_rol: Optional[int] = None
+    permisos: Optional[list[str]] = None
 
 # Esquemas para Review
 class ReviewBase(BaseModel):

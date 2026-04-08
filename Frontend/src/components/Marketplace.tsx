@@ -4,6 +4,7 @@ import { axiosInstance } from "../utils/axiosInstance";
 import type { MarketplaceResponse } from "../types/marketplace";
 import "../styles/marketplace.css";
 import "../styles/botones.css";
+import Button from "./commons/Button";
 
 export function Marketplace({ rol = "user", productos: initialProductos = [] }: { rol?: string; productos?: MarketplaceResponse[] }) {
   const [productos, setProductos] = useState<MarketplaceResponse[]>(initialProductos as MarketplaceResponse[]);
@@ -68,6 +69,15 @@ export function Marketplace({ rol = "user", productos: initialProductos = [] }: 
     setLoading(false);
   };
 
+  const handleBuy = (id:number) => {
+    // placeholder - implementar flujo de compra
+    try {
+      window.alert('Función de compra aún no implementada');
+    } catch (e) {
+      console.log('Compra:', e);
+    }
+  };
+
   const formatPrice = (value?: number | null) => {
     try {
       return (value ?? 0).toLocaleString("es-CO", { style: "currency", currency: "COP" });
@@ -86,7 +96,7 @@ export function Marketplace({ rol = "user", productos: initialProductos = [] }: 
           <textarea name="descripcion" value={form.descripcion} onChange={handleChange} placeholder="Descripción" required className="border rounded px-3 py-2" />
           <input name="precio" type="number" value={form.precio} onChange={handleChange} placeholder="Precio" required min={0} className="border rounded px-3 py-2" />
           <input name="imagen_url" value={form.imagen_url} onChange={handleChange} placeholder="URL de imagen" className="border rounded px-3 py-2" />
-          <button type="submit" className="btn btn-primary">Agregar</button>
+          <Button type="submit" variant="primary">Agregar</Button>
           {error && <div className="text-red-500 text-sm">{error}</div>}
         </form>
       )}
@@ -134,9 +144,9 @@ export function Marketplace({ rol = "user", productos: initialProductos = [] }: 
                 <span className="text-sm text-gray-500 mb-2">ID Empresa: {p.id_empresa}</span>
                 <div className="mp-actions">
                   {rol === "admin" && (
-                    <button aria-label={`Eliminar ${p.nombre}`} className="btn-delete" onClick={() => handleDelete(p.id_marketplace)}>Eliminar</button>
+                    <Button ariaLabel={`Eliminar ${p.nombre}`} variant="delete" onClick={() => handleDelete(p.id_marketplace)}>Eliminar</Button>
                   )}
-                  <button aria-label={`Comprar ${p.nombre}`} className="btn btn-secondary">Comprar</button>
+                  <Button ariaLabel={`Comprar ${p.nombre}`} variant="secondary" onClick={() => handleBuy(p.id_marketplace)}>Comprar</Button>
                 </div>
               </article>
             ))

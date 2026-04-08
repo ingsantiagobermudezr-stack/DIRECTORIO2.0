@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
@@ -54,7 +54,7 @@ def authenticate_user(db: Session, correo: str, password: str):
 
 # Ruta para autenticación de usuarios (login)
 @router.post("/signin", response_model=SigninResponse)
-async def login(form_data: Dict, db: Session = Depends(conexion.get_db)):
+async def login(form_data: Dict, response: Response, db: Session = Depends(conexion.get_db)):
 
     user = authenticate_user(db, form_data.get('correo'), form_data.get('password'))
     if not user:
@@ -66,8 +66,34 @@ async def login(form_data: Dict, db: Session = Depends(conexion.get_db)):
     
     # Crear token con el correo en el campo `sub` para facilitar la recuperación
     user_sub = user.correo
+    # recoger permisos desde la relación rol_obj
+    permisos = []
+    try:
+        if getattr(user, 'rol_obj', None) and getattr(user.rol_obj, 'permisos', None):
+            permisos = [p.nombre for p in user.rol_obj.permisos]
+    except Exception:
+        permisos = []
+
     access_token = create_access_token(data={"sub": user_sub, "rol": user.rol, "id_usuario": user.id_usuario, "id_rol": getattr(user, 'id_rol', None)})
-    return {"access_token": access_token, "rol": user.rol, "id_usuario": user.id_usuario, "id_rol": getattr(user, 'id_rol', None)}
+
+    # Establecer cookies para que el SSR y el cliente las reciban.
+    # Token como HttpOnly; rol y permisos accesibles si es necesario.
+    secure_flag = True if os.getenv('ENV', '').lower() == 'production' else False
+    # token (HttpOnly)
+    response.set_cookie(key='token', value=access_token, httponly=True, path='/', samesite='none', secure=secure_flag)
+    # rol (no HttpOnly para facilitar SSR y JS si se desea)
+    response.set_cookie(key='rol', value=str(user.rol), httponly=False, path='/', samesite='none', secure=secure_flag)
+    # id_usuario
+    response.set_cookie(key='id_usuario', value=str(user.id_usuario), httponly=False, path='/', samesite='none', secure=secure_flag)
+    # permisos (serializar como JSON)
+    try:
+        import json
+        permisos_val = json.dumps(permisos)
+    except Exception:
+        permisos_val = '[]'
+    response.set_cookie(key='permisos', value=permisos_val, httponly=False, path='/', samesite='none', secure=secure_flag)
+
+    return {"access_token": access_token, "rol": user.rol, "id_usuario": user.id_usuario, "id_rol": getattr(user, 'id_rol', None), "permisos": permisos}
 
 @router.post("/signup", response_model=SigninResponse)
 def create_usuario(usuario: UsuarioCreate, db: Session = Depends(conexion.get_db)):
@@ -83,8 +109,15 @@ def create_usuario(usuario: UsuarioCreate, db: Session = Depends(conexion.get_db
     db.commit()
     db.refresh(db_usuario)
 
+    permisos = []
+    try:
+        if getattr(db_usuario, 'rol_obj', None) and getattr(db_usuario.rol_obj, 'permisos', None):
+            permisos = [p.nombre for p in db_usuario.rol_obj.permisos]
+    except Exception:
+        permisos = []
+
     access_token = create_access_token(data={"sub": db_usuario.correo, "rol": db_usuario.rol, "id_usuario": db_usuario.id_usuario, "id_rol": getattr(db_usuario, 'id_rol', None)})
-    return {"access_token": access_token, "rol": db_usuario.rol, "id_usuario": db_usuario.id_usuario, "id_rol": getattr(db_usuario, 'id_rol', None) }
+    return {"access_token": access_token, "rol": db_usuario.rol, "id_usuario": db_usuario.id_usuario, "id_rol": getattr(db_usuario, 'id_rol', None), "permisos": permisos }
 
 # Función para verificar el token y obtener el usuario actual
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(conexion.get_db)):
@@ -113,3 +146,15 @@ async def require_admin(current_user: models.Usuario = Depends(get_current_user)
     if getattr(current_user, 'rol_obj', None) and getattr(current_user.rol_obj, 'nombre', None) == 'admin':
         return current_user
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Se requieren privilegios de administrador")
+
+
+@router.get("/me/permisos")
+async def me_permisos(current_user: models.Usuario = Depends(get_current_user)):
+    """Devuelve la lista de permisos asociados al rol del usuario autenticado."""
+    permisos = []
+    try:
+        if getattr(current_user, 'rol_obj', None) and getattr(current_user.rol_obj, 'permisos', None):
+            permisos = [p.nombre for p in current_user.rol_obj.permisos]
+    except Exception:
+        permisos = []
+    return {"permisos": permisos}

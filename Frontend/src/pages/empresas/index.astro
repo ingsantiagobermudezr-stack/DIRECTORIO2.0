@@ -1,0 +1,36 @@
+---
+import GlobalLayout from "../../layout/GlobalLayout.astro";
+import axiosInstance from "../../utils/axiosInstance";
+
+const { data: empresas } = await axiosInstance("/empresas", { method: "GET", params: { skip: 0, limit: 50 } }).catch(() => ({ data: [] }));
+const rol = (Astro.cookies.get("rol") || {})?.value;
+---
+
+<GlobalLayout title="Directorio">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-semibold">Directorio de Empresas</h2>
+      <div class="flex items-center gap-3">
+        <a href="/empresas/crear" class="btn btn-primary">Registrar empresa</a>
+        <a href="/admin" class="btn btn-secondary">Panel admin</a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {empresas.length === 0 ? (
+        <div class="p-6 bg-white rounded shadow text-center">No hay empresas registradas todavía.</div>
+      ) : (
+        empresas.map((e) => (
+          <article class="p-4 bg-white rounded shadow" key={e.id_empresa}>
+            <h3 class="font-semibold">{e.nombre}</h3>
+            <p class="text-sm text-gray-600">{e.direccion}</p>
+            <p class="text-sm text-gray-500">{e.correo}</p>
+            <div class="mt-3">
+              <a href={`/empresas/${e.id_empresa}`} class="text-blue-600 hover:underline">Ver</a>
+            </div>
+          </article>
+        ))
+      )}
+    </div>
+  </div>
+</GlobalLayout>

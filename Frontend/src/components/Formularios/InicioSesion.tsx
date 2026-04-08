@@ -37,10 +37,23 @@ export function InicioSesion() {
         success: true,
         error: null,
       }));
-      document.cookie = `token=${data.access_token};  path=/; SameSite=None; Secure`;
-      document.cookie = `rol=${data.rol};  path=/; SameSite=None; Secure`;
-      document.cookie = `id_usuario=${data.id_usuario};  path=/; SameSite=None; Secure`;
-      navigate("/");
+      // En desarrollo no forzamos `Secure` para que el navegador acepte cookies sobre HTTP.
+      const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
+      const securePart = isHttps ? ' SameSite=None; Secure' : '';
+      const setCookie = (name: string, value: string) => {
+        document.cookie = `${name}=${value}; path=/;${securePart}`;
+      };
+      setCookie('token', data.access_token);
+      setCookie('rol', data.rol);
+      setCookie('id_usuario', String(data.id_usuario));
+      if (data.permisos) {
+        try {
+          const p = encodeURIComponent(JSON.stringify(data.permisos));
+          setCookie('permisos', p);
+        } catch (e) { console.warn('No se pudo setear permisos cookie', e); }
+      }
+      // Forzar recarga completa para que el servidor reciba las cookies recién creadas
+      if (typeof window !== 'undefined') window.location.href = '/';
     } catch (error) {
       if (error instanceof AxiosError) {
         const _message =

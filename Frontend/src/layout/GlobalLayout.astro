@@ -1,5 +1,74 @@
 ---
 const { title = 'Páginas Amarillas', auth = false } = Astro.props;
+const rol = Astro.cookies.get('rol')?.value || null;
+const token = Astro.cookies.get('token')?.value || null;
+const user = { isLoggedIn: !!token, role: rol || null };
+
+// permisos opcionales (pueden venir del backend serializados en cookie)
+let permisos = [];
+const permisosCookie = Astro.cookies.get('permisos')?.value || null;
+try {
+  if (permisosCookie) permisos = JSON.parse(decodeURIComponent(permisosCookie));
+} catch (e) { permisos = []; }
+
+function hrefFor(label) {
+  switch (label) {
+    case 'Inicio': return '/';
+    case 'Marketplace': return '/marketplace';
+    case 'Directorio': return '/empresas';
+    case 'Contacto': return '/contacto';
+    case 'Registrar empresa': return '/empresas/crear';
+    case 'Iniciar sesión': return '/iniciar-sesion';
+    case 'Mi empresa': return '/mi-cuenta';
+    case 'Carrito': return '/carrito';
+    case 'Panel admin': return '/admin';
+    default: return '#';
+  }
+}
+
+// calcular botones según rol y permisos (esquema provisto por el usuario)
+// definir botones separados para izquierda (nav) y derecha (acciones)
+let leftButtons = [];
+let rightPrimary = null; // CTA destacado (Registrar empresa / Panel admin)
+let rightSecondary = null; // sesión (Iniciar/Cerrar)
+
+if (!user.isLoggedIn) {
+  leftButtons = ['Inicio','Directorio','Marketplace','Contacto'];
+  rightPrimary = 'Registrar empresa';
+  rightSecondary = 'Iniciar sesión';
+} else if (user.role === 'cliente') {
+  leftButtons = ['Inicio','Directorio','Marketplace','Mi empresa','Carrito','Contacto'];
+  rightPrimary = null; // no registrar destacado for clientes
+  rightSecondary = 'Mi cuenta';
+} else if (user.role === 'admin') {
+  leftButtons = ['Inicio','Directorio','Marketplace','Contacto'];
+  // Panel admin se muestra como CTA destacado (btn-secondary)
+  rightPrimary = 'Panel admin';
+  // opcional registrar empresa para admin
+  if (permisos && permisos.includes('registrar_empresa')) {
+    // mostrar registrar como secundaria junto al panel
+    // it will be rendered as small primary button next to admin
+    // keep rightSecondary as logout
+  }
+  // show account link server-side for admins as well
+  rightSecondary = 'Mi cuenta';
+} else {
+  leftButtons = ['Inicio','Directorio','Marketplace','Contacto'];
+  rightPrimary = null;
+  rightSecondary = user.isLoggedIn ? 'Mi cuenta' : 'Iniciar sesión';
+}
+
+// aplicar permisos si están presentes: ocultar opciones no permitidas
+if (permisos && permisos.length) {
+  if (!permisos.includes('panel_admin')) {
+    if (rightPrimary === 'Panel admin') rightPrimary = null;
+    leftButtons = leftButtons.filter(b => b !== 'Panel admin');
+  }
+  if (!permisos.includes('registrar_empresa')) {
+    if (rightPrimary === 'Registrar empresa') rightPrimary = null;
+    leftButtons = leftButtons.filter(b => b !== 'Registrar empresa');
+  }
+}
 ---
 
 <html lang="es">
@@ -20,13 +89,39 @@ const { title = 'Páginas Amarillas', auth = false } = Astro.props;
           <h1 class="text-xl font-semibold">Páginas Amarillas 360</h1>
         </div>
         <nav class="hidden md:flex items-center gap-4">
-          <a href="/" class="text-gray-700 hover:text-gray-900">Inicio</a>
-          <a href="/marketplace" class="text-gray-700 hover:text-gray-900">Marketplace</a>
-          <a href="/empresas" class="text-gray-700 hover:text-gray-900">Directorio</a>
-          <a href="/contacto" class="text-gray-700 hover:text-gray-900">Contacto</a>
+          {leftButtons.map((b) => (
+            <a href={hrefFor(b)} class="text-gray-700 hover:text-gray-900">{b}</a>
+          ))}
         </nav>
-        <div class="md:hidden">
-          <button aria-label="Abrir menú" class="text-gray-700">☰</button>
+        <div class="flex items-center gap-3">
+          {/* Primary CTA: Registrar empresa (visitable) or Panel admin (admin) */}
+          {rightPrimary ? (
+            <div class="flex items-center gap-2">
+              {rightPrimary === 'Panel admin' ? (
+                <a href="/admin" class="btn-secondary px-3 py-1 rounded">Panel admin</a>
+              ) : (
+                <a href={hrefFor(rightPrimary)} class="btn btn-primary px-3 py-1 rounded">{rightPrimary}</a>
+              )}
+              {/* if admin and has registrar permission, show small registrar button */}
+              {user.role === 'admin' && permisos && permisos.includes('registrar_empresa') ? (
+                <a href="/empresas/crear" class="btn btn-primary px-2 py-1 rounded text-sm">Registrar empresa</a>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Right secondary: account link + logout */}
+          {rightSecondary ? (
+            <div class="flex items-center gap-2">
+              <a href={hrefFor(rightSecondary)} class="ml-2 text-gray-700 hover:text-gray-900">{rightSecondary}</a>
+              {user.isLoggedIn ? (
+                <button id="logout-btn" class="btn btn-ghost ml-2" type="button">Cerrar sesión</button>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div class="md:hidden">
+            <button id="menu-toggle" aria-label="Abrir menú" aria-expanded="false" class="text-gray-700">☰</button>
+          </div>
         </div>
       </div>
     </header>
@@ -51,4 +146,59 @@ const { title = 'Páginas Amarillas', auth = false } = Astro.props;
       </div>
     </footer>
   </body>
+  <script>
+    (function(){
+      const btn = document.getElementById('menu-toggle');
+      const nav = document.querySelector('nav');
+      if(btn && nav){
+        btn.addEventListener('click', () => {
+          if (nav.classList.contains('hidden')) {
+            nav.classList.remove('hidden');
+            btn.setAttribute('aria-expanded','true');
+          } else {
+            nav.classList.add('hidden');
+            btn.setAttribute('aria-expanded','false');
+          }
+        });
+      }
+
+      // Logout helper: borra cookies de sesión y redirige al inicio
+      window.logout = function(){
+        try{
+          document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          document.cookie = 'rol=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          document.cookie = 'permisos=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        }catch(e){/* ignore */}
+        window.location.href = '/';
+      };
+
+      // bind logout button for client-side clicks
+      try {
+        const lb = document.getElementById('logout-btn');
+        if (lb) lb.addEventListener('click', () => window.logout && window.logout());
+      } catch(e) { /* ignore */ }
+
+      // Si falta la cookie `permisos`, solicitar permisos al backend enviando
+      // cookies (fetch con credentials) para que funcione aunque `token` sea HttpOnly.
+      try {
+        const hasPerm = document.cookie.split(';').some(c => c.trim().startsWith('permisos='));
+        if (!hasPerm) {
+          fetch('/api/me/permisos', { credentials: 'include' })
+            .then(res => { if (!res.ok) throw res; return res.json(); })
+            .then(data => {
+              if (data && data.permisos) {
+                const permValue = encodeURIComponent(JSON.stringify(data.permisos));
+                let cookieStr = `permisos=${permValue}; path=/;`;
+                // En desarrollo sobre http no se puede usar Secure; activarlo sólo en https
+                if (location.protocol === 'https:') cookieStr += ' SameSite=None; Secure';
+                document.cookie = cookieStr;
+                // recargar para que el server render use la cookie actualizada
+                window.location.reload();
+              }
+            })
+            .catch(() => {/* ignore errors */});
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
 </html>

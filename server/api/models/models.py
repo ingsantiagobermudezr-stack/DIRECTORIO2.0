@@ -18,6 +18,7 @@ class Pais(Base):
     id_pais = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     codigo_iso = Column(String(10), nullable=True)
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
     departamentos = relationship("Departamento", back_populates="pais", cascade="all, delete-orphan")
 
@@ -31,6 +32,7 @@ class Ciudad(Base):
     id_departamento = Column(Integer, ForeignKey('departamento.id_departamento', ondelete="CASCADE"))
 
     departamento = relationship("Departamento", back_populates="ciudades")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo de Roles y Permisos
@@ -40,6 +42,7 @@ class Rol(Base):
     id_rol = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(50), nullable=False, unique=True)
     descripcion = Column(Text, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
     permisos = relationship('Permiso', secondary=role_permiso, back_populates='roles')
     usuarios = relationship('Usuario', back_populates='rol_obj')
@@ -53,6 +56,7 @@ class Permiso(Base):
     descripcion = Column(Text, nullable=True)
 
     roles = relationship('Rol', secondary=role_permiso, back_populates='permisos')
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo de Auditoría
@@ -67,6 +71,7 @@ class Auditoria(Base):
     descripcion = Column(Text, nullable=True)
     fecha = Column(DateTime, default=datetime.utcnow)
     usuario = relationship('Usuario', backref='auditorias')
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo para Productos (catálogo general distinto de marketplace)
@@ -83,8 +88,7 @@ class Producto(Base):
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
 
     empresa = relationship('Empresa')
-
-
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo para Marketplace (productos/servicios publicados por empresas)
@@ -103,6 +107,7 @@ class Marketplace(Base):
 
     empresa = relationship("Empresa", back_populates="marketplaces")
     categoria = relationship("Categoria", back_populates="marketplaces")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo de Empresa, con datos básicos y relaciones
@@ -125,6 +130,7 @@ class Empresa(Base):
     publicidades = relationship("Publicidad", back_populates="empresa", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="empresa", cascade="all, delete-orphan")
     marketplaces = relationship("Marketplace", back_populates="empresa", cascade="all, delete-orphan")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo de Categoría para clasificar empresas por tipo o sector de servicio
@@ -138,6 +144,7 @@ class Categoria(Base):
     # Relación inversa con Empresa y Marketplace
     empresas = relationship("Empresa", back_populates="categoria", cascade="all, delete-orphan")
     marketplaces = relationship("Marketplace", back_populates="categoria", cascade="all, delete-orphan")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo de Municipio para organización geográfica
@@ -151,6 +158,7 @@ class Municipio(Base):
     # Relaciones con Departamento y Empresa
     departamento = relationship("Departamento", back_populates="municipios")
     empresas = relationship("Empresa", back_populates="municipio", cascade="all, delete-orphan")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo de Departamento para agrupar municipios
@@ -165,6 +173,7 @@ class Departamento(Base):
     municipios = relationship("Municipio", back_populates="departamento", cascade="all, delete-orphan")
     ciudades = relationship("Ciudad", back_populates="departamento", cascade="all, delete-orphan")
     pais = relationship("Pais", back_populates="departamentos")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo de Publicidad para gestionar anuncios de empresas
@@ -181,7 +190,7 @@ class Publicidad(Base):
     
     # Relación con Empresa
     empresa = relationship("Empresa", back_populates="publicidades")
-
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 # Modelo para Usuario, representando un usuario del sistema con información de autenticación
 class Usuario(Base):
@@ -201,6 +210,7 @@ class Usuario(Base):
     # Relación con Resultado para almacenar historial de búsqueda
     resultados = relationship("Resultado", back_populates="usuario", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="usuario", cascade="all, delete-orphan")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
     
 
 # Modelo para Review, que permite valoraciones y comentarios de usuarios sobre las empresas
@@ -217,6 +227,7 @@ class Review(Base):
     # Relaciones con Usuario y Empresa
     usuario = relationship("Usuario", back_populates="reviews")
     empresa = relationship("Empresa", back_populates="reviews")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
 # Modelo para Resultado, que almacena el historial de búsqueda de cada usuario
@@ -230,3 +241,4 @@ class Resultado(Base):
     
     # Relación con Usuario
     usuario = relationship("Usuario", back_populates="resultados")
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
