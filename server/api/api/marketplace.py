@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Marketplace, Empresa, ImagenMarketplace, EstadoMarketplace, UsuarioFavorito
+from api.models.models import Marketplace, Empresa, ImagenMarketplace, EstadoMarketplace, UsuarioFavorito, EventoMarketplace
 from api.schemas.schemas import MarketplaceCreate, MarketplaceResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional
 from api.api.notificaciones import create_business_notification
@@ -19,6 +19,28 @@ router = APIRouter()
 
 def _is_admin(user) -> bool:
     return getattr(user, "id", None) == 1
+
+
+async def _registrar_evento_marketplace(
+    db: AsyncSession,
+    *,
+    item: Marketplace,
+    tipo_evento: str,
+    request: Request,
+    current_user=None,
+) -> None:
+    if tipo_evento not in {"vista", "click"}:
+        return
+
+    event = EventoMarketplace(
+        id_marketplace=item.id,
+        id_usuario=getattr(current_user, "id", None) if current_user else None,
+        tipo_evento=tipo_evento,
+        ip_origen=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.add(event)
+    await db.commit()
 
 
 async def _assert_marketplace_owner_or_admin(db: AsyncSession, user, marketplace: Marketplace) -> None:
@@ -132,6 +154,8 @@ async def get_marketplace(
 @router.get("/marketplace/{id_marketplace}", response_model=MarketplaceResponse)
 async def get_marketplace_item(
     id_marketplace: int,
+    request: Request,
+    current_user = Depends(get_current_user_optional),
     can_view_deleted: bool = Depends(can_view_deleted_records),
     db: AsyncSession = Depends(get_db),
 ):
@@ -146,6 +170,15 @@ async def get_marketplace_item(
     item = result.scalars().first()
     if not item:
         raise HTTPException(status_code=404, detail="Marketplace item not found")
+
+    await _registrar_evento_marketplace(
+        db,
+        item=item,
+        tipo_evento="vista",
+        request=request,
+        current_user=current_user,
+    )
+
     return item
 
 # Mis productos (para usuario autenticado)
@@ -339,3 +372,29 @@ async def upload_marketplace_images(
         "id_marketplace": id_marketplace,
         "imagenes": uploaded_urls,
     }
+
+
+@router.post("/marketplace/{id_marketplace}/click")
+async def track_marketplace_click(
+    id_marketplace: int,
+    request: Request,
+    current_user = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """Registra un evento de click del producto para embudo comercial."""
+    result = await db.execute(
+        select(Marketplace).where(Marketplace.id == id_marketplace, Marketplace.deleted_at.is_(None))
+    )
+    item = result.scalars().first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Marketplace item not found")
+
+    await _registrar_evento_marketplace(
+        db,
+        item=item,
+        tipo_evento="click",
+        request=request,
+        current_user=current_user,
+    )
+
+    return {"message": "Click registrado", "id_marketplace": id_marketplace}

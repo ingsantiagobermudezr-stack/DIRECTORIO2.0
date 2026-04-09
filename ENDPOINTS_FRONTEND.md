@@ -282,6 +282,19 @@ Response:
 Response: { producto...completo con relaciones }
 ```
 
+Tracking automático:
+- Cada consulta registra una `vista` del producto para métricas de funnel.
+
+### POST `/marketplace/{id_marketplace}/click` - Registrar Click de Producto
+Registrar evento explícito de click/interés para funnel comercial.
+```
+Response:
+{
+  "message": "Click registrado",
+  "id_marketplace": 5
+}
+```
+
 ### GET `/marketplace/usuario/mis-productos` - Mis Productos (autenticado)
 Obtener productos de empresas del usuario
 ```
@@ -624,6 +637,37 @@ Response:
       "total_reviews": 48
     }
   ]
+}
+```
+
+### GET `/reportes/funnel` - Embudo comercial por período
+```
+Query: ?desde=&hasta=
+
+Response:
+{
+  "filtros": {
+    "desde": "2026-04-01T00:00:00",
+    "hasta": "2026-04-30T23:59:59"
+  },
+  "metricas": {
+    "busquedas": 1200,
+    "productos_vistos": 840,
+    "clics_producto": 310,
+    "clics_productos_vistos": 1150,
+    "chats_iniciados": 210,
+    "comprobantes_registrados": 95,
+    "comprobantes_validos": 72
+  },
+  "conversiones": {
+    "busqueda_a_vista_porcentaje": 70.0,
+    "vista_a_click_porcentaje": 36.9,
+    "click_a_chat_porcentaje": 67.74,
+    "busqueda_a_chat_porcentaje": 17.5,
+    "chat_a_comprobante_porcentaje": 45.24,
+    "comprobante_a_valido_porcentaje": 75.79,
+    "busqueda_a_valido_porcentaje": 6.0
+  }
 }
 ```
 

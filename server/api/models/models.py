@@ -110,6 +110,7 @@ class Usuario(Base):
     mensajes_enviados = relationship("Mensaje", back_populates="usuario_enviador_mensaje", foreign_keys="Mensaje.id_usuario_enviador_mensaje")
     comprobantes_evaluados = relationship("Comprobante", back_populates="empleado_evaluador", foreign_keys="Comprobante.id_empleado_evaluador")
     favoritos = relationship("UsuarioFavorito", back_populates="usuario", cascade="all, delete-orphan")
+    eventos_marketplace = relationship("EventoMarketplace", back_populates="usuario", cascade="all, delete-orphan")
     notificaciones_enviadas = relationship("Notificacion", back_populates="usuario_remitente", foreign_keys="Notificacion.id_usuario_remitente", cascade="all, delete-orphan")
     notificaciones_recibidas = relationship("Notificacion", back_populates="usuario_destinatario", foreign_keys="Notificacion.id_usuario_destinatario", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
@@ -227,7 +228,24 @@ class Marketplace(Base):
     empresa = relationship("Empresa", back_populates="marketplaces")
     categoria = relationship("Categoria", back_populates="marketplaces")
     favoritos = relationship("UsuarioFavorito", back_populates="marketplace", cascade="all, delete-orphan")
+    eventos = relationship("EventoMarketplace", back_populates="marketplace", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
+
+
+class EventoMarketplace(Base):
+    __tablename__ = 'eventos_marketplace'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_marketplace = Column(Integer, ForeignKey('marketplaces.id'), nullable=False)
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'), nullable=True)
+    tipo_evento = Column(String(20), nullable=False)  # vista | click
+    fecha_hora = Column(DateTime, default=datetime.utcnow)
+    ip_origen = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    marketplace = relationship("Marketplace", back_populates="eventos")
+    usuario = relationship("Usuario", back_populates="eventos_marketplace")
 
 
 class Mensaje(Base):

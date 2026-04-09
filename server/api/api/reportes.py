@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.api.auth import require_permission
 from api.db.conexion import get_db
-from api.models.models import ArchivoMensaje, Comprobante, Empresa, Marketplace, Mensaje, Review, Usuario
+from api.models.models import ArchivoMensaje, Comprobante, Empresa, EventoMarketplace, Marketplace, Mensaje, Resultado, Review, Usuario
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -19,6 +19,10 @@ def _normalize_date_range(desde: datetime | None, hasta: datetime | None) -> tup
     if hasta and hasta.time() == time(0, 0, 0):
         hasta = datetime.combine(hasta.date(), time.max)
     return desde, hasta
+
+
+def _safe_rate(numerator: int, denominator: int) -> float:
+    return round((numerator / denominator) * 100, 2) if denominator else 0.0
 
 
 @router.get("/reportes/transacciones/resumen")
@@ -293,4 +297,99 @@ async def reporte_top_empresas_rating_reviews(
             }
             for row in result.all()
         ]
+    }
+
+
+@router.get("/reportes/funnel")
+async def reporte_funnel_comercial(
+    desde: datetime | None = Query(default=None),
+    hasta: datetime | None = Query(default=None),
+    _: object = Depends(require_permission(Permisos.VER_REPORTES)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Embudo comercial por periodo con métricas disponibles en el modelo actual."""
+    desde, hasta = _normalize_date_range(desde, hasta)
+
+    # 1) Búsquedas
+    search_filters = [Resultado.deleted_at.is_(None)]
+    if desde is not None:
+        search_filters.append(Resultado.fecha_hora >= desde)
+    if hasta is not None:
+        search_filters.append(Resultado.fecha_hora <= hasta)
+
+    busquedas_q = select(func.count(Resultado.id)).where(and_(*search_filters))
+    busquedas_result = await db.execute(busquedas_q)
+    busquedas = int(busquedas_result.scalar() or 0)
+
+    # 2) Vistas y clics de producto (tracking dedicado)
+    evento_filters = [EventoMarketplace.deleted_at.is_(None)]
+    if desde is not None:
+        evento_filters.append(EventoMarketplace.fecha_hora >= desde)
+    if hasta is not None:
+        evento_filters.append(EventoMarketplace.fecha_hora <= hasta)
+
+    vistas_q = select(func.count(EventoMarketplace.id)).where(
+        and_(*evento_filters, EventoMarketplace.tipo_evento == "vista")
+    )
+    vistas_result = await db.execute(vistas_q)
+    productos_vistos = int(vistas_result.scalar() or 0)
+
+    clicks_q = select(func.count(EventoMarketplace.id)).where(
+        and_(*evento_filters, EventoMarketplace.tipo_evento == "click")
+    )
+    clicks_result = await db.execute(clicks_q)
+    clics_producto = int(clicks_result.scalar() or 0)
+
+    # 3) Chats iniciados (aproximado por combinación marketplace + usuario creador_chat)
+    chat_key = cast(Mensaje.id_marketplace, String) + ":" + cast(Mensaje.id_usuario_creador_chat, String)
+    chat_filters = [Mensaje.deleted_at.is_(None)]
+    if desde is not None:
+        chat_filters.append(Mensaje.fecha_hora >= desde)
+    if hasta is not None:
+        chat_filters.append(Mensaje.fecha_hora <= hasta)
+
+    chats_q = select(func.count(func.distinct(chat_key))).where(and_(*chat_filters))
+    chats_result = await db.execute(chats_q)
+    chats_iniciados = int(chats_result.scalar() or 0)
+
+    # 4) Comprobantes registrados y 5) comprobantes válidos
+    comprobante_filters = [Comprobante.deleted_at.is_(None)]
+    if desde is not None:
+        comprobante_filters.append(Comprobante.fecha_creacion >= desde)
+    if hasta is not None:
+        comprobante_filters.append(Comprobante.fecha_creacion <= hasta)
+
+    comprobantes_q = select(func.count(Comprobante.id)).where(and_(*comprobante_filters))
+    comprobantes_result = await db.execute(comprobantes_q)
+    comprobantes_registrados = int(comprobantes_result.scalar() or 0)
+
+    comprobantes_validos_q = select(func.count(Comprobante.id)).where(
+        and_(*comprobante_filters, Comprobante.recibo_valido.is_(True))
+    )
+    comprobantes_validos_result = await db.execute(comprobantes_validos_q)
+    comprobantes_validos = int(comprobantes_validos_result.scalar() or 0)
+
+    return {
+        "filtros": {
+            "desde": desde.isoformat() if desde else None,
+            "hasta": hasta.isoformat() if hasta else None,
+        },
+        "metricas": {
+            "busquedas": busquedas,
+            "productos_vistos": productos_vistos,
+            "clics_producto": clics_producto,
+            "clics_productos_vistos": productos_vistos + clics_producto,
+            "chats_iniciados": chats_iniciados,
+            "comprobantes_registrados": comprobantes_registrados,
+            "comprobantes_validos": comprobantes_validos,
+        },
+        "conversiones": {
+            "busqueda_a_vista_porcentaje": _safe_rate(productos_vistos, busquedas),
+            "vista_a_click_porcentaje": _safe_rate(clics_producto, productos_vistos),
+            "click_a_chat_porcentaje": _safe_rate(chats_iniciados, clics_producto),
+            "busqueda_a_chat_porcentaje": _safe_rate(chats_iniciados, busquedas),
+            "chat_a_comprobante_porcentaje": _safe_rate(comprobantes_registrados, chats_iniciados),
+            "comprobante_a_valido_porcentaje": _safe_rate(comprobantes_validos, comprobantes_registrados),
+            "busqueda_a_valido_porcentaje": _safe_rate(comprobantes_validos, busquedas),
+        },
     }
