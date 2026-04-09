@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db.conexion import get_db
@@ -30,12 +31,21 @@ async def create_municipio(
 async def read_municipios(
     skip: int = 0,
     limit: int = 10,
+    id_departamento: Optional[int] = None,
     can_view_deleted: bool = Depends(can_view_deleted_records),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Municipio)
+    
+    filters = []
+    if id_departamento is not None:
+        filters.append(Municipio.id_departamento == id_departamento)
     if not can_view_deleted:
-        query = query.where(Municipio.deleted_at.is_(None))
+        filters.append(Municipio.deleted_at.is_(None))
+    
+    if filters:
+        query = query.where(and_(*filters))
+    
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 

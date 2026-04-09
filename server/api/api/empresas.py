@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
+from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+from typing import Optional
 
 from api.schemas.schemas import EmpresaCreate, EmpresaResponse, EmpresaResponseGet
 from api.models.models import Empresa, Categoria, Municipio
 from api.db.conexion import get_db
-from api.api.auth import can_view_deleted_records, require_permission
+from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -61,24 +62,81 @@ async def create_empresa(
 
 # Leer todas las empresas
 @router.get("/empresas/", response_model=list[EmpresaResponseGet])
-async def read_empresas(skip: int = 0, limit: int = 10,
-    nombre: str | None = Query(default=None, description="Filtrar por nombre de empresa"),
+async def read_empresas(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    nombre: Optional[str] = Query(None),
+    id_categoria: Optional[int] = Query(None),
+    id_municipio: Optional[int] = Query(None),
+    search: Optional[str] = Query(None),
+    ordenar: Optional[str] = Query("nombre", regex="^(nombre|rating)$"),
     can_view_deleted: bool = Depends(can_view_deleted_records),
-    db: AsyncSession = Depends(get_db)):
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Leer empresas con filtros avanzados
+    - search: Busca en nombre y correo
+    - nombre: Filtro simple por nombre
+    - id_categoria: Filtrar por categoría
+    - id_municipio: Filtrar por municipio/ubicación
+    - ordenar: Ordenar por nombre (asc) o rating (desc)
+    """
+    query = select(Empresa).options(
+        joinedload(Empresa.categoria),
+        joinedload(Empresa.municipio)
+    )
 
-    query = select(Empresa)
+    filters = []
+    if not can_view_deleted:
+        filters.append(Empresa.deleted_at.is_(None))
 
     if nombre:
-        query = query.where(Empresa.nombre.ilike(f"%{nombre}%"))
+        filters.append(Empresa.nombre.ilike(f"%{nombre}%"))
+    
+    if search:
+        search_filter = or_(
+            Empresa.nombre.ilike(f"%{search}%"),
+            Empresa.correo.ilike(f"%{search}%")
+        )
+        filters.append(search_filter)
 
-    if not can_view_deleted:
-        query = query.where(Empresa.deleted_at.is_(None))
+    if id_categoria:
+        filters.append(Empresa.id_categoria == id_categoria)
+    
+    if id_municipio:
+        filters.append(Empresa.id_municipio == id_municipio)
 
-    query = query.options(joinedload(Empresa.categoria))
-    query = query.options(joinedload(Empresa.municipio))
+    if filters:
+        query = query.where(and_(*filters))
+
+    # Ordenamiento
+    if ordenar == "nombre":
+        query = query.order_by(Empresa.nombre.asc())
+    else:
+        query = query.order_by(Empresa.nombre.asc())
 
     result = await db.execute(query.offset(skip).limit(limit))
-    return result.scalars().all()
+    return result.scalars().unique().all()
+
+# Mis empresas (para usuario autenticado)
+@router.get("/empresas/usuario/mis-empresas", response_model=list[EmpresaResponseGet])
+async def get_mis_empresas(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db)
+):
+    """Obtener mis empresas como creador"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Debe estar autenticado")
+    
+    query = select(Empresa).options(
+        joinedload(Empresa.categoria),
+        joinedload(Empresa.municipio)
+    ).where(Empresa.id_usuario_creador == current_user.id)
+    
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().unique().all()
 
 # Leer una empresa específica
 @router.get("/empresas/{empresa_id}", response_model=EmpresaResponseGet)
