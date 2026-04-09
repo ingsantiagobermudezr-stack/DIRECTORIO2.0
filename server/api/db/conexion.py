@@ -27,14 +27,10 @@ if not HOST:
 if not DATABASE:
     raise ValueError("La variable de entorno 'DATABASE' no está definida.")
 
-
-print(USER, PASSWORD, HOST, DATABASE)
-
-
-
 # Database connection
+DB_ECHO = os.environ.get("DB_ECHO", "false").lower() == "true"
 engine = create_async_engine(
-    f"postgresql+asyncpg://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}", echo=True
+    f"postgresql+asyncpg://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}", echo=DB_ECHO
 )
 
 # sesion para interactuar con la DB

@@ -69,9 +69,8 @@ class Departamento(Base):
     codigo_iso = Column(String(10), nullable=True)
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
-    # Relación inversa con Municipio y Ciudad
+    # Relación inversa con Municipio
     municipios = relationship("Municipio", back_populates="departamento", cascade="all, delete-orphan")
-    ciudades = relationship("Ciudad", back_populates="departamento", cascade="all, delete-orphan")
     pais = relationship("Pais", back_populates="departamentos")
 
 # Modelo de Municipio para organización geográfica

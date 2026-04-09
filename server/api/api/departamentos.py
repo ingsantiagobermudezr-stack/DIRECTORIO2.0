@@ -1,49 +1,62 @@
-from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime
-from sqlalchemy.orm import Session
 
-from api.schemas.schemas import DepartamentoCreate, DepartamentoResponse
-from api.models.models import Departamento
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from api.db.conexion import get_db
+from api.models.models import Departamento
+from api.schemas.schemas import DepartamentoCreate, DepartamentoResponse
 
 router = APIRouter()
 
-# RUTAS PARA DEPARTAMENTO
+
 @router.post("/departamentos/", response_model=DepartamentoResponse)
-def create_departamento(departamento: DepartamentoCreate, db: Session = Depends(get_db)):
-    db_departamento = Departamento(**departamento.dict())
+async def create_departamento(departamento: DepartamentoCreate, db: AsyncSession = Depends(get_db)):
+    db_departamento = Departamento(**departamento.model_dump())
     db.add(db_departamento)
-    db.commit()
-    db.refresh(db_departamento)
+    await db.commit()
+    await db.refresh(db_departamento)
     return db_departamento
 
+
 @router.get("/departamentos/", response_model=list[DepartamentoResponse])
-def read_departamentos(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    return db.query(Departamento).offset(skip).limit(limit).all()
+async def read_departamentos(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Departamento).offset(skip).limit(limit))
+    return result.scalars().all()
+
 
 @router.get("/departamentos/{departamento_id}", response_model=DepartamentoResponse)
-def read_departamento(departamento_id: int, db: Session = Depends(get_db)):
-    departamento = db.query(Departamento).filter(Departamento.id_departamento == departamento_id).first()
+async def read_departamento(departamento_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Departamento).where(Departamento.id == departamento_id))
+    departamento = result.scalars().first()
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
     return departamento
 
+
 @router.put("/departamentos/{departamento_id}", response_model=DepartamentoResponse)
-def update_departamento(departamento_id: int, departamento: DepartamentoCreate, db: Session = Depends(get_db)):
-    db_departamento = db.query(Departamento).filter(Departamento.id_departamento == departamento_id).first()
+async def update_departamento(departamento_id: int, departamento: DepartamentoCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Departamento).where(Departamento.id == departamento_id))
+    db_departamento = result.scalars().first()
     if not db_departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
-    for key, value in departamento.dict().items():
+
+    for key, value in departamento.model_dump().items():
         setattr(db_departamento, key, value)
-    db.commit()
-    db.refresh(db_departamento)
+
+    await db.commit()
+    await db.refresh(db_departamento)
     return db_departamento
 
+
 @router.delete("/departamentos/{departamento_id}")
-def delete_departamento(departamento_id: int, db: Session = Depends(get_db)):
-    departamento = db.query(Departamento).filter(Departamento.id == departamento_id).first()
+async def delete_departamento(departamento_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Departamento).where(Departamento.id == departamento_id))
+    departamento = result.scalars().first()
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
+
     departamento.deleted_at = datetime.utcnow()
-    db.commit()
+    await db.commit()
     return {"message": "Departamento desactivado correctamente"}

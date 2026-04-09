@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime
-from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas.schemas import UsuarioUpdate, UsuarioResponse, UsuarioCreate
-from api.models.models import Usuario, Rol
 from api.db.conexion import get_db
-
+from api.models.models import Rol, Usuario
+from api.schemas.schemas import UsuarioCreate, UsuarioResponse, UsuarioUpdate
 
 router = APIRouter()
 
@@ -14,76 +15,74 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 @router.post("/usuarios/", response_model=UsuarioResponse, status_code=201)
-def create_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
-    # Verificar si ya existe un usuario con ese correo
-    existing_user = db.query(Usuario).filter(Usuario.correo == usuario.correo).first()
+async def create_usuario(usuario: UsuarioCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Usuario).where(Usuario.correo == usuario.correo))
+    existing_user = result.scalars().first()
     if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe un usuario registrado con este correo electrónico"
-        )
-    # Hashear contraseña antes de almacenar
+        raise HTTPException(status_code=400, detail="Ya existe un usuario registrado con este correo electrónico")
+
     hashed = pwd_context.hash(usuario.password)
-    data = {**usuario.dict(exclude={"password"}), "password": hashed}
+    data = {**usuario.model_dump(exclude={"password"}), "password": hashed}
     db_usuario = Usuario(**data)
 
-    # Si se proporcionó id_rol, asignarlo y actualizar campo legible
     if usuario.id_rol:
-        role = db.query(Rol).filter(Rol.id_rol == usuario.id_rol).first()
+        role_result = await db.execute(select(Rol).where(Rol.id == usuario.id_rol))
+        role = role_result.scalars().first()
         if role:
-            db_usuario.id_rol = role.id_rol
-            db_usuario.rol = role.nombre
+            db_usuario.id_rol = role.id
 
     db.add(db_usuario)
-    db.commit()
-    db.refresh(db_usuario)
-
+    await db.commit()
+    await db.refresh(db_usuario)
     return db_usuario
 
 
-# RUTAS PARA USUARIO
 @router.get("/usuarios/", response_model=list[UsuarioResponse])
-def read_usuarios(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    return db.query(Usuario).offset(skip).limit(limit).all()
+async def read_usuarios(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Usuario).offset(skip).limit(limit))
+    return result.scalars().all()
 
 
 @router.get("/usuarios/{usuario_id}", response_model=UsuarioResponse)
-def read_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+async def read_usuario(usuario_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
+    usuario = result.scalars().first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return usuario
 
 
 @router.put("/usuarios/{usuario_id}", response_model=UsuarioResponse)
-def update_usuario(usuario_id: int, usuario: UsuarioUpdate, db: Session = Depends(get_db)):
-    db_usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+async def update_usuario(usuario_id: int, usuario: UsuarioUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
+    db_usuario = result.scalars().first()
     if not db_usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    update_data = usuario.dict(exclude_unset=True)
-    # Manejar id_rol explícitamente
-    if 'id_rol' in update_data:
-        new_id_rol = update_data.pop('id_rol')
+    update_data = usuario.model_dump(exclude_unset=True)
+    if "id_rol" in update_data:
+        new_id_rol = update_data.pop("id_rol")
         if new_id_rol is not None:
-            role = db.query(Rol).filter(Rol.id_rol == new_id_rol).first()
+            role_result = await db.execute(select(Rol).where(Rol.id == new_id_rol))
+            role = role_result.scalars().first()
             if role:
-                db_usuario.id_rol = role.id_rol
-                db_usuario.rol = role.nombre
+                db_usuario.id_rol = role.id
+
     for key, value in update_data.items():
         setattr(db_usuario, key, value)
-    db.commit()
-    db.refresh(db_usuario)
 
+    await db.commit()
+    await db.refresh(db_usuario)
     return db_usuario
 
 
 @router.delete("/usuarios/{usuario_id}")
-def delete_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+async def delete_usuario(usuario_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
+    usuario = result.scalars().first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    usuario.deleted_at = datetime.utcnow()
-    db.commit()
 
+    usuario.deleted_at = datetime.utcnow()
+    await db.commit()
     return {"message": "Usuario desactivado correctamente"}

@@ -188,6 +188,12 @@ class UsuarioCreate(BaseModel):
     id_rol: Optional[int] = None
     id_empresa: Optional[int] = None
 
+class UsuarioRegister(BaseModel):
+    nombre: constr(min_length=1, max_length=100)
+    apellido: constr(min_length=1, max_length=100)
+    correo: EmailStr
+    password: constr(min_length=8, max_length=128)
+
 class UsuarioUpdate(BaseModel):
     nombre: str
     apellido: str
@@ -213,7 +219,7 @@ class UsuarioResponse(BaseModel):
 
 class SigninResponse(BaseModel):
     access_token: str
-    rol: str
+    rol: Optional[str] = None
     id_usuario: int
     id_rol: Optional[int] = None
     permisos: Optional[list[str]] = None
