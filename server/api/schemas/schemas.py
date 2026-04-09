@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, constr, Field
+from pydantic import BaseModel, EmailStr, constr
 from typing import Optional
 from datetime import datetime
 
@@ -7,8 +7,8 @@ class MarketplaceBase(BaseModel):
     nombre: str
     descripcion: Optional[str] = ""
     precio: Optional[float] = 0.0
-    imagen_url: Optional[str] = ""
-    estado: Optional[str] = "activo"
+    stock: Optional[float] = 0.0
+    id_estado: Optional[int] = None
     id_empresa: int
     id_categoria: Optional[int] = None
 
@@ -19,7 +19,7 @@ class MarketplaceResponse(MarketplaceBase):
     """
     Respuesta del marketplace con detalles completos del producto/servicio
     """
-    id_marketplace: int
+    id: int
     fecha_publicacion: datetime
 
     model_config = {"from_attributes": True}
@@ -33,13 +33,14 @@ class EmpresaBase(BaseModel):
     telefono: constr(min_length=7, max_length=20)
     id_categoria: int
     id_municipio: int
-    logo: Optional[str] = None
+    id_usuario_creador: Optional[int] = None
+    logo_url: Optional[str] = None
 
 class EmpresaCreate(EmpresaBase):
     pass
 
 class EmpresaResponse(BaseModel):
-    id_empresa: int
+    id: int
     success: bool
 
 # Esquemas para Categoria
@@ -54,7 +55,7 @@ class CategoriaResponse(CategoriaBase):
     """
     Respuesta para categorías con su identificador
     """
-    id_categoria: int
+    id: int
 
     model_config = {"from_attributes": True}
 
@@ -70,7 +71,7 @@ class MunicipioResponse(MunicipioBase):
     """
     Respuesta para municipios con su identificador
     """
-    id_municipio: int
+    id: int
 
     model_config = {"from_attributes": True}
 
@@ -85,18 +86,17 @@ class DepartamentoResponse(DepartamentoBase):
     """
     Respuesta para departamentos con su identificador
     """
-    id_departamento: int
+    id: int
 
     model_config = {"from_attributes": True}
 
 # Esquemas para Publicidad
 class PublicidadBase(BaseModel):
     id_empresa: int
-    tipo_anuncio: str
-    descripcion: str
-    duracion: int
+    id_tipo_anuncio: int
+    descripcion: Optional[str] = None
     fecha_inicio: datetime
-    fecha_fin: datetime
+    fecha_fin: Optional[datetime] = None
 
 class PublicidadCreate(PublicidadBase):
     pass
@@ -105,7 +105,67 @@ class PublicidadResponse(PublicidadBase):
     """
     Respuesta para publicidad con su identificador
     """
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
+class ImagenPublicidadBase(BaseModel):
     id_publicidad: int
+    imagen_url: str
+
+
+class ImagenPublicidadCreate(ImagenPublicidadBase):
+    pass
+
+
+class ImagenPublicidadResponse(ImagenPublicidadBase):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
+class TipoAnuncioBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+
+
+class TipoAnuncioCreate(TipoAnuncioBase):
+    pass
+
+
+class TipoAnuncioResponse(TipoAnuncioBase):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
+class EstadoMarketplaceBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+
+
+class EstadoMarketplaceCreate(EstadoMarketplaceBase):
+    pass
+
+
+class EstadoMarketplaceResponse(EstadoMarketplaceBase):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
+class ImagenMarketplaceBase(BaseModel):
+    id_marketplace: int
+    imagen_url: str
+
+
+class ImagenMarketplaceCreate(ImagenMarketplaceBase):
+    pass
+
+
+class ImagenMarketplaceResponse(ImagenMarketplaceBase):
+    id: int
 
     model_config = {"from_attributes": True}
 
@@ -118,6 +178,7 @@ class UsuarioBase(BaseModel):
     password: Optional[str] = None  # Cambiado a Optional para Response
     rol: Optional[str] = None
     id_rol: Optional[int] = None
+    id_empresa: Optional[int] = None
 
 class UsuarioCreate(BaseModel):
     nombre: constr(min_length=1, max_length=100)
@@ -125,25 +186,28 @@ class UsuarioCreate(BaseModel):
     correo: EmailStr
     password: constr(min_length=8, max_length=128)
     id_rol: Optional[int] = None
+    id_empresa: Optional[int] = None
 
 class UsuarioUpdate(BaseModel):
     nombre: str
     apellido: str
     correo: str
-    rol: str
+    rol: Optional[str] = None
     id_rol: Optional[int] = None
+    id_empresa: Optional[int] = None
 
 class UsuarioResponse(BaseModel):
     """
     Respuesta para usuarios con todos sus detalles excepto la contraseña
     """
-    id_usuario: int
+    id: int
     nombre: str
     apellido: str
     correo: str
     telefono: Optional[str] = None
-    rol: str
+    rol: Optional[str] = None
     id_rol: Optional[int] = None
+    id_empresa: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
@@ -172,7 +236,7 @@ class ReviewResponse(ReviewBase):
     """
     Respuesta para reseñas con detalles del usuario
     """
-    id_review: int
+    id: int
     usuario: UsuarioBase
 
     model_config = {"from_attributes": True}
@@ -215,7 +279,7 @@ class PaisBase(BaseModel):
     codigo_iso: Optional[str] = None
 
 class PaisResponse(PaisBase):
-    id_pais: int
+    id: int
 
     model_config = {"from_attributes": True}
 
@@ -224,7 +288,7 @@ class CiudadBase(BaseModel):
     id_departamento: int
 
 class CiudadResponse(CiudadBase):
-    id_ciudad: int
+    id: int
 
     model_config = {"from_attributes": True}
 
@@ -247,7 +311,7 @@ class RolCreate(RolBase):
     permiso_ids: Optional[list[int]] = []
 
 class RolResponse(RolBase):
-    id_rol: int
+    id: int
     permisos: Optional[list[PermisoResponse]] = []
 
     model_config = {"from_attributes": True}
@@ -262,7 +326,7 @@ class AuditoriaBase(BaseModel):
     descripcion: Optional[str] = None
 
 class AuditoriaResponse(AuditoriaBase):
-    id_auditoria: int
+    id: int
     fecha: datetime
 
     model_config = {"from_attributes": True}
@@ -290,8 +354,59 @@ class EmpresaResponseGet(EmpresaBase):
     """
     Respuesta detallada de empresa incluyendo su categoría y municipio
     """
-    id_empresa: int
+    id: int
     categoria: CategoriaBase 
     municipio: MunicipioBase
+
+    model_config = {"from_attributes": True}
+
+
+# Esquemas para Mensajes y Comprobantes
+class MensajeBase(BaseModel):
+    id_marketplace: int
+    id_usuario_creador_chat: int
+    id_usuario_enviador_mensaje: int
+    mensaje: str
+
+
+class MensajeCreate(MensajeBase):
+    pass
+
+
+class MensajeResponse(MensajeBase):
+    id: int
+    fecha_hora: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ArchivoMensajeBase(BaseModel):
+    id_mensaje: int
+    url_imagen: str
+
+
+class ArchivoMensajeCreate(ArchivoMensajeBase):
+    pass
+
+
+class ArchivoMensajeResponse(ArchivoMensajeBase):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
+class ComprobanteBase(BaseModel):
+    id_archivo: int
+    id_empleado_evaluador: int
+    recibo_valido: bool
+    cantidad_recibida: float
+
+
+class ComprobanteCreate(ComprobanteBase):
+    pass
+
+
+class ComprobanteResponse(ComprobanteBase):
+    id: int
 
     model_config = {"from_attributes": True}
