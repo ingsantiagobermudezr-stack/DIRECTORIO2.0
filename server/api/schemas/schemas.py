@@ -447,3 +447,40 @@ class ComprobanteResponse(ComprobanteBase):
     id: int
 
     model_config = {"from_attributes": True}
+
+# Esquemas para Notificaciones (Sistema de notificaciones en tiempo real)
+class NotificacionBase(BaseModel):
+    id_usuario_remitente: Optional[int] = None
+    id_usuario_destinatario: int
+    tipo: str
+    contenido: str
+    leido: bool = False
+
+
+class NotificacionCreate(BaseModel):
+    id_usuario_remitente: Optional[int] = None
+    id_usuario_destinatario: int
+    tipo: str
+    contenido: str
+
+
+class NotificacionResponse(NotificacionBase):
+    """Respuesta de notificación"""
+    id: int
+    fecha_creacion: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class NotificacionResponseDetallado(BaseModel):
+    """Respuesta detallada de notificación con info del remitente"""
+    id: int
+    id_usuario_remitente: Optional[int] = None
+    id_usuario_destinatario: int
+    tipo: str
+    contenido: str
+    leido: bool
+    fecha_creacion: datetime
+    usuario_remitente: Optional[UsuarioBase] = None
+
+    model_config = {"from_attributes": True}

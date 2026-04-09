@@ -61,6 +61,11 @@ class Permisos(Enum):
   VER_FAVORITOS = 'ver_favoritos'
   CREAR_FAVORITOS = 'crear_favoritos'
   ELIMINAR_FAVORITOS = 'eliminar_favoritos'
+  
+  # Permisos para Notificaciones
+  VER_NOTIFICACIONES = 'ver_notificaciones'
+  CREAR_NOTIFICACIONES = 'crear_notificaciones'
+  ELIMINAR_NOTIFICACIONES = 'eliminar_notificaciones'
 
 PERMISOS = {
   Permisos.CREAR_EMPRESA: {
@@ -250,6 +255,25 @@ PERMISOS = {
     'descripcion': 'Permite eliminar productos de favoritos',
     'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
   },
+  # Permisos para Notificaciones
+  Permisos.VER_NOTIFICACIONES: {
+    'id': 30,
+    'key': Permisos.VER_NOTIFICACIONES.value,
+    'descripcion': 'Permite ver la lista de notificaciones',
+    'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
+  },
+  Permisos.CREAR_NOTIFICACIONES: {
+    'id': 31,
+    'key': Permisos.CREAR_NOTIFICACIONES.value,
+    'descripcion': 'Permite crear nuevas notificaciones',
+    'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
+  },
+  Permisos.ELIMINAR_NOTIFICACIONES: {
+    'id': 32,
+    'key': Permisos.ELIMINAR_NOTIFICACIONES.value,
+    'descripcion': 'Permite eliminar notificaciones',
+    'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
+  },
 }
 
 async def seed_permisos(run_sql_statements):
@@ -278,3 +302,5 @@ async def seed_permisos(run_sql_statements):
         """))
 
     await run_sql_statements(sql_statements)
+
+

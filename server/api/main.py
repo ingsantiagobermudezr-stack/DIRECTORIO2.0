@@ -63,6 +63,7 @@ routers = [
     ("api.api.paises", "/api", "Paises"),
     ("api.api.favoritos", "/api", "Favoritos"),
     ("api.api.busqueda", "/api", "Búsqueda"),
+    ("api.api.notificaciones", "/api", "Notificaciones"),
     ("api.api.admin", "/api", "Admin"),
 ]
 
@@ -101,4 +102,5 @@ async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled exception: %s", exc)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
 

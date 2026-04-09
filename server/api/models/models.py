@@ -110,6 +110,8 @@ class Usuario(Base):
     mensajes_enviados = relationship("Mensaje", back_populates="usuario_enviador_mensaje", foreign_keys="Mensaje.id_usuario_enviador_mensaje")
     comprobantes_evaluados = relationship("Comprobante", back_populates="empleado_evaluador", foreign_keys="Comprobante.id_empleado_evaluador")
     favoritos = relationship("UsuarioFavorito", back_populates="usuario", cascade="all, delete-orphan")
+    notificaciones_enviadas = relationship("Notificacion", back_populates="usuario_remitente", foreign_keys="Notificacion.id_usuario_remitente", cascade="all, delete-orphan")
+    notificaciones_recibidas = relationship("Notificacion", back_populates="usuario_destinatario", foreign_keys="Notificacion.id_usuario_destinatario", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
@@ -318,3 +320,21 @@ class UsuarioFavorito(Base):
     # Relaciones
     usuario = relationship("Usuario", back_populates="favoritos")
     marketplace = relationship("Marketplace", back_populates="favoritos")
+
+
+# Modelo para Notificacion (Sistema de notificaciones en tiempo real)
+class Notificacion(Base):
+    __tablename__ = 'notificaciones'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_usuario_remitente = Column(Integer, ForeignKey('usuarios.id'), nullable=True)  # quien envía (puede ser None para notificaciones del sistema)
+    id_usuario_destinatario = Column(Integer, ForeignKey('usuarios.id'), nullable=False)  # quien recibe
+    tipo = Column(String(50), nullable=False)  # new_message, new_review, nuevo_producto, etc.
+    contenido = Column(Text, nullable=False)  # Contenido del mensaje
+    leido = Column(Boolean, default=False)  # Si ya fue leído
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
+
+    # Relaciones
+    usuario_remitente = relationship("Usuario", back_populates="notificaciones_enviadas", foreign_keys=[id_usuario_remitente])
+    usuario_destinatario = relationship("Usuario", back_populates="notificaciones_recibidas", foreign_keys=[id_usuario_destinatario])

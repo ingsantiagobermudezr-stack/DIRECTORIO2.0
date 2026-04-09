@@ -618,7 +618,88 @@ Response:
 3. ✅ **Wishlist**: Agregar/eliminar favoritos (tabla `usuarios_favoritos` implementada)
 4. ✅ **Búsqueda Global**: Endpoints `/busqueda/global/` y `/busqueda/sugerencias/` implementados
 5. **Carrito de Compras**: Funcionalidad e-commerce básica
-6. **Notificaciones**: Sistema de notificaciones en tiempo real (WebSocket)
+6. ✅ **Notificaciones**: Sistema de notificaciones en tiempo real (WebSocket) implementado
+
+---
+
+## 🔔 NOTIFICACIONES (Tiempo Real - WebSocket)
+
+### GET `/notificaciones/usuario/` - Mis Notificaciones (autenticado)
+Listar notificaciones del usuario autenticado
+```
+Query: ?skip=0&limit=50&leidas=true|false
+
+Response:
+[
+  {
+    "id": 1,
+    "id_usuario_remitente": 2,
+    "id_usuario_destinatario": 1,
+    "tipo": "new_message",
+    "contenido": "Tienes un nuevo mensaje sobre tu producto",
+    "leido": false,
+    "fecha_creacion": "2026-04-09T15:00:00"
+  }
+]
+```
+
+### GET `/notificaciones/usuario/sin-leer/` - Contar Sin Leer (autenticado)
+```
+Response:
+{
+  "sin_leer": 3
+}
+```
+
+### POST `/notificaciones/marcar-como-leida/{id_notificacion}` - Marcar Leída
+```
+Response:
+{
+  "message": "Notificación marcada como leída",
+  "id": 1
+}
+```
+
+### POST `/notificaciones/marcar-todas-como-leidas/` - Marcar Todas Leídas
+```
+Response:
+{
+  "message": "5 notificaciones marcadas como leídas"
+}
+```
+
+### DELETE `/notificaciones/{id_notificacion}` - Eliminar Notificación
+```
+Response:
+{
+  "message": "Notificación eliminada"
+}
+```
+
+### WebSocket `/ws/notificaciones/{usuario_id}` - Canal Tiempo Real
+Conectar para recibir eventos de notificación instantáneamente.
+
+Autenticación requerida (JWT):
+- Opción 1 (query param): `ws://localhost:8000/api/ws/notificaciones/{usuario_id}?token={JWT}`
+- Opción 2 (header): `Authorization: Bearer {JWT}`
+- El `usuario_id` del path debe coincidir con el usuario autenticado en el token.
+- Si el token es inválido o no coincide el usuario: cierre con código `1008`.
+
+Eventos recibidos:
+```json
+{
+  "tipo": "nueva_notificacion",
+  "id": 10,
+  "contenido": "Tu reseña recibió respuesta",
+  "tipo_notificacion": "new_review",
+  "fecha_creacion": "2026-04-09T15:05:00",
+  "remitente_id": 3
+}
+```
+
+Ping/Pong:
+- Cliente envía: `ping`
+- Servidor responde: `{ "tipo": "pong" }`
 
 ---
 
