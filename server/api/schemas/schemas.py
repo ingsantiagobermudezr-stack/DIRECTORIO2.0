@@ -231,11 +231,11 @@ class CiudadResponse(CiudadBase):
 
 # Schemas para Rol y Permiso
 class PermisoBase(BaseModel):
-    nombre: str
+    key: str
     descripcion: Optional[str] = None
 
 class PermisoResponse(PermisoBase):
-    id_permiso: int
+    id: int
 
     model_config = {"from_attributes": True}
 

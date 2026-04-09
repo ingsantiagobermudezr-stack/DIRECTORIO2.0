@@ -46,12 +46,18 @@ async def run_sql_statements(statements):
 if __name__ == "__main__":
     import asyncio
     from departamentos import seed_departamentos
+    from seed_admin_user import seed_admin_user
+    from seed_roles import seed_roles
     from paises import seed_paises
     from municipios import seed_municipios
+    from seed_permisos import seed_permisos
 
     async def main():
-      await seed_paises(run_sql_statements)
-      await seed_departamentos(run_sql_statements)
-      await seed_municipios(run_sql_statements)
-
+        await seed_paises(run_sql_statements)
+        await seed_departamentos(run_sql_statements)
+        await seed_municipios(run_sql_statements)
+        await seed_roles(run_sql_statements)
+        await seed_admin_user(run_sql_statements)
+        await seed_permisos(run_sql_statements)
+        
     asyncio.run(main())

@@ -10,13 +10,11 @@ import os
 from api.models import models
 from api.db import conexion
 from api.schemas.schemas import UsuarioCreate, SigninResponse
-from sqlalchemy.orm import Session
-
 
 # Configuración de seguridad
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")  # usar variable de entorno en producción
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60)  # 1 hora por defecto
 
 # Configuración de bcrypt para encriptar contraseñas
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")

@@ -15,7 +15,7 @@ def list_permisos(skip: int = 0, limit: int = 10, db: Session = Depends(get_db))
 
 @router.post("/permisos", response_model=PermisoResponse, status_code=201)
 def create_permiso(payload: PermisoBase, db: Session = Depends(get_db)):
-    db_perm = Permiso(nombre=payload.nombre, descripcion=payload.descripcion)
+    db_perm = Permiso(key=payload.key, descripcion=payload.descripcion)
     db.add(db_perm)
     db.commit()
     db.refresh(db_perm)
@@ -24,7 +24,7 @@ def create_permiso(payload: PermisoBase, db: Session = Depends(get_db)):
 
 @router.get("/permisos/{id_permiso}", response_model=PermisoResponse)
 def get_permiso(id_permiso: int, db: Session = Depends(get_db)):
-    perm = db.query(Permiso).filter(Permiso.id_permiso == id_permiso).first()
+    perm = db.query(Permiso).filter(Permiso.id == id_permiso).first()
     if not perm:
         raise HTTPException(status_code=404, detail="Permiso not found")
     return perm
@@ -32,10 +32,10 @@ def get_permiso(id_permiso: int, db: Session = Depends(get_db)):
 
 @router.put("/permisos/{id_permiso}", response_model=PermisoResponse)
 def update_permiso(id_permiso: int, payload: PermisoBase, db: Session = Depends(get_db)):
-    perm = db.query(Permiso).filter(Permiso.id_permiso == id_permiso).first()
+    perm = db.query(Permiso).filter(Permiso.id == id_permiso).first()
     if not perm:
         raise HTTPException(status_code=404, detail="Permiso not found")
-    perm.nombre = payload.nombre
+    perm.key = payload.key
     perm.descripcion = payload.descripcion
     db.commit()
     db.refresh(perm)
@@ -44,7 +44,7 @@ def update_permiso(id_permiso: int, payload: PermisoBase, db: Session = Depends(
 
 @router.delete("/permisos/{id_permiso}")
 def delete_permiso(id_permiso: int, db: Session = Depends(get_db)):
-    perm = db.query(Permiso).filter(Permiso.id_permiso == id_permiso).first()
+    perm = db.query(Permiso).filter(Permiso.id == id_permiso).first()
     if not perm:
         raise HTTPException(status_code=404, detail="Permiso not found")
     db.delete(perm)

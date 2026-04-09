@@ -1,8 +1,14 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Table
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from api.db.conexion import Base
 
+# Asociación many-to-many entre roles y permisos
+role_permiso = Table(
+    'roles_permisos', Base.metadata,
+    Column('id_rol', Integer, ForeignKey('roles.id')),
+    Column('id_permiso', Integer, ForeignKey('permisos.id'))
+)
 
 # Modelo para País
 class Pais(Base):
@@ -39,7 +45,7 @@ class Rol(Base):
     descripcion = Column(Text, nullable=True)
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
-    permisos = relationship('Permiso', back_populates='rol', cascade='all, delete-orphan')
+    permisos = relationship('Permiso', secondary=role_permiso, back_populates='roles')
     usuarios = relationship('Usuario', back_populates='rol_obj')
 
 
@@ -47,16 +53,10 @@ class Permiso(Base):
     __tablename__ = 'permisos'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_rol = Column(Integer, ForeignKey('roles.id'), nullable=False)
-    tabla = Column(String(100), nullable=False)
-    leer = Column(Boolean, nullable=False, default=False)
-    crear = Column(Boolean, nullable=False, default=False)
-    editar = Column(Boolean, nullable=False, default=False)
-    eliminar = Column(Boolean, nullable=False, default=False)
+    key = Column(String(100), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
 
-    rol = relationship('Rol', back_populates='permisos')
-    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
-
+    roles = relationship('Rol', secondary=role_permiso, back_populates='permisos')
 
 # Modelo de Departamento para agrupar municipios
 class Departamento(Base):
