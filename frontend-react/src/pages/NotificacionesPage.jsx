@@ -51,7 +51,13 @@ export function NotificacionesPage() {
   const wsUrl = user?.id_usuario ? buildNotificationsSocketUrl(user.id_usuario) : null;
 
   useEffect(() => {
-    refreshNotificaciones();
+    const timer = window.setTimeout(() => {
+      refreshNotificaciones();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [refreshNotificaciones]);
 
   const ws = useWebSocketBackoff({

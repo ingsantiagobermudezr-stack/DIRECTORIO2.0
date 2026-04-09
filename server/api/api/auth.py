@@ -139,7 +139,6 @@ async def create_usuario(usuario: UsuarioRegister, db: AsyncSession = Depends(co
     # Crear usuario con password hasheada
     data_usuario = {
         **usuario.dict(),
-        "telefono": '',
         "id_rol": 2, # ROL USUARIO por defecto
         "password": hash_password(usuario.password)
     }

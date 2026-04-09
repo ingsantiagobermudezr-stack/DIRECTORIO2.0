@@ -14,10 +14,30 @@ export function useWebSocketBackoff({
   const reconnectTimerRef = useRef(null);
   const stopRef = useRef(false);
   const attemptRef = useRef(0);
+  const onMessageRef = useRef(onMessage);
+  const onOpenRef = useRef(onOpen);
+  const onCloseRef = useRef(onClose);
+  const onErrorRef = useRef(onError);
 
   const [status, setStatus] = useState("idle");
   const [attempt, setAttempt] = useState(0);
   const [reconnectInMs, setReconnectInMs] = useState(0);
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
+
+  useEffect(() => {
+    onOpenRef.current = onOpen;
+  }, [onOpen]);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   useEffect(() => {
     if (!enabled || !url) {
@@ -66,27 +86,27 @@ export function useWebSocketBackoff({
         setAttempt(0);
         setReconnectInMs(0);
         setStatus("connected");
-        if (onOpen) {
-          onOpen();
+        if (onOpenRef.current) {
+          onOpenRef.current();
         }
       };
 
       socket.onmessage = (event) => {
-        if (onMessage) {
-          onMessage(event);
+        if (onMessageRef.current) {
+          onMessageRef.current(event);
         }
       };
 
       socket.onerror = () => {
-        if (onError) {
-          onError();
+        if (onErrorRef.current) {
+          onErrorRef.current();
         }
       };
 
       socket.onclose = () => {
         setStatus("disconnected");
-        if (onClose) {
-          onClose();
+        if (onCloseRef.current) {
+          onCloseRef.current();
         }
         scheduleReconnect();
       };
@@ -101,7 +121,7 @@ export function useWebSocketBackoff({
         socketRef.current.close();
       }
     };
-  }, [baseDelayMs, enabled, maxDelayMs, onClose, onError, onMessage, onOpen, url]);
+  }, [baseDelayMs, enabled, maxDelayMs, url]);
 
   return {
     status: enabled && url ? status : "idle",

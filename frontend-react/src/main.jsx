@@ -12,15 +12,13 @@ import { ToastProvider } from "./context/ToastContext";
 import { PermissionsProvider } from "./context/PermissionsContext";
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <PermissionsProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </PermissionsProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </StrictMode>,
+  <BrowserRouter>
+    <AuthProvider>
+      <PermissionsProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </PermissionsProvider>
+    </AuthProvider>
+  </BrowserRouter>
 );

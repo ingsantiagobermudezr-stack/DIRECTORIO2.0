@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatCard } from "../components/common/StatCard";
 import { DataTable } from "../components/common/DataTable";
 import { Loading } from "../components/common/Loading";
@@ -6,7 +6,6 @@ import { buildNotificationsSocketUrl } from "../lib/ws";
 import { notificacionesApi, reportesApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { usePollingBackoff } from "../hooks/usePollingBackoff";
 import { useWebSocketBackoff } from "../hooks/useWebSocketBackoff";
 
 const EVENT_TYPES = [
@@ -96,33 +95,35 @@ export function AdminLivePage() {
     }
   }, []);
 
-  const pollTask = useCallback(async () => {
-    try {
-      await Promise.all([reloadMetrics(), refreshEventos()]);
-      setLoading(false);
-      bootstrapErrorNotifiedRef.current = false;
-      return true;
-    } catch {
-      if (!bootstrapErrorNotifiedRef.current) {
-        bootstrapErrorNotifiedRef.current = true;
-        pushToast({
-          title: "Modo admin",
-          message: "Falló carga inicial. Reintentando con backoff automático",
-          type: "error",
-        });
-      }
-      setLoading(false);
-      return false;
-    }
-  }, [pushToast, refreshEventos, reloadMetrics]);
+  useEffect(() => {
+    let cancelled = false;
 
-  const polling = usePollingBackoff({
-    enabled: true,
-    task: pollTask,
-    baseIntervalMs: 15000,
-    maxIntervalMs: 120000,
-    immediate: true,
-  });
+    async function bootstrap() {
+      try {
+        await Promise.all([reloadMetrics(), refreshEventos()]);
+        bootstrapErrorNotifiedRef.current = false;
+      } catch {
+        if (!bootstrapErrorNotifiedRef.current) {
+          bootstrapErrorNotifiedRef.current = true;
+          pushToast({
+            title: "Modo admin",
+            message: "Falló carga inicial. Usa refresco manual o espera nuevos eventos WS",
+            type: "error",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pushToast, refreshEventos, reloadMetrics]);
 
   const ws = useWebSocketBackoff({
     url: wsUrl,
@@ -183,12 +184,11 @@ export function AdminLivePage() {
       <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900">Modo admin avanzado</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Métricas híbridas en vivo (WebSocket + polling con backoff).
+          Métricas en vivo por WebSocket.
         </p>
         <p className="mt-2 text-xs text-slate-500">
           WS: <strong>{ws.status}</strong>
           {ws.reconnectInMs ? ` | reintento en ${Math.round(ws.reconnectInMs / 1000)}s` : ""}
-          {` | polling ${Math.round(polling.intervalMs / 1000)}s`}
         </p>
       </header>
 

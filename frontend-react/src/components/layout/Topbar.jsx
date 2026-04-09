@@ -35,8 +35,17 @@ export function Topbar() {
   useWebSocketBackoff({
     url: wsUrl,
     enabled: Boolean(wsUrl),
-    onMessage: () => {
-      refreshConteos();
+    onMessage: (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        const isUnread = payload?.leido === false || payload?.read === false || payload?.sin_leer === true;
+        setConteos((prev) => ({
+          total: prev.total + 1,
+          sinLeer: prev.sinLeer + (isUnread ? 1 : 0),
+        }));
+      } catch {
+        // Ignore malformed websocket payloads.
+      }
     },
   });
 
