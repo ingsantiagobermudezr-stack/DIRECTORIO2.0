@@ -149,6 +149,18 @@ class Publicidad(Base):
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
+# Tabla catálogo para estados de publicación en marketplace
+class EstadoMarketplace(Base):
+    __tablename__ = 'estados_marketplace'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(20), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    marketplaces = relationship("Marketplace", back_populates="estado")
+
+
 # Modelo para Marketplace (productos/servicios publicados por empresas)
 class Marketplace(Base):
     __tablename__ = 'marketplaces'
@@ -159,10 +171,11 @@ class Marketplace(Base):
     precio = Column(Float, nullable=True)
     imagen_url = Column(String(255), nullable=True)
     fecha_publicacion = Column(DateTime, default=datetime.utcnow)
-    estado = Column(String(20), default='activo')
+    id_estado = Column(Integer, ForeignKey('estados_marketplace.id'), nullable=True)
     id_empresa = Column(Integer, ForeignKey('empresas.id'), nullable=False)
     id_categoria = Column(Integer, ForeignKey('categorias.id'), nullable=True)
 
+    estado = relationship("EstadoMarketplace", back_populates="marketplaces")
     empresa = relationship("Empresa", back_populates="marketplaces")
     categoria = relationship("Categoria", back_populates="marketplaces")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
