@@ -67,6 +67,9 @@ class Permisos(Enum):
   CREAR_NOTIFICACIONES = 'crear_notificaciones'
   ELIMINAR_NOTIFICACIONES = 'eliminar_notificaciones'
 
+  # Permisos para Reportes
+  VER_REPORTES = 'ver_reportes'
+
 PERMISOS = {
   Permisos.CREAR_EMPRESA: {
     'id': 1,
@@ -273,6 +276,13 @@ PERMISOS = {
     'key': Permisos.ELIMINAR_NOTIFICACIONES.value,
     'descripcion': 'Permite eliminar notificaciones',
     'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
+  },
+  # Permisos para Reportes
+  Permisos.VER_REPORTES: {
+    'id': 33,
+    'key': Permisos.VER_REPORTES.value,
+    'descripcion': 'Permite consultar reportes operativos y de negocio',
+    'roles_aceptados': [Roles.ADMIN],
   },
 }
 

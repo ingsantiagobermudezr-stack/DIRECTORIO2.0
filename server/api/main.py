@@ -70,6 +70,7 @@ routers = [
     ("api.api.favoritos", "/api", "Favoritos"),
     ("api.api.busqueda", "/api", "Búsqueda"),
     ("api.api.notificaciones", "/api", "Notificaciones"),
+    ("api.api.reportes", "/api", "Reportes"),
     ("api.api.admin", "/api", "Admin"),
 ]
 

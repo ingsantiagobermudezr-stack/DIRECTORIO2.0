@@ -536,6 +536,101 @@ Response:
 Evento automático:
 - Crea notificación `comprobante_rechazado` para usuarios involucrados en el chat asociado.
 
+---
+
+## 📈 REPORTES OPERATIVOS (Panel Negocio)
+
+### GET `/reportes/transacciones/resumen` - Ventas estimadas y validez
+```
+Query:
+  ?desde=2026-04-01T00:00:00
+  &hasta=2026-04-30T23:59:59
+  &id_empresa=1
+
+Response:
+{
+  "filtros": {
+    "desde": "2026-04-01T00:00:00",
+    "hasta": "2026-04-30T23:59:59",
+    "id_empresa": 1
+  },
+  "resumen_global": {
+    "total_transacciones": 45,
+    "monto_total_valido": 12350000,
+    "tasa_validez_porcentaje": 82.22
+  },
+  "detalle_por_empresa": [
+    {
+      "id_empresa": 1,
+      "empresa": "Acme Corp",
+      "total_transacciones": 20,
+      "monto_total_valido": 7000000,
+      "tasa_validez_porcentaje": 85.0
+    }
+  ]
+}
+```
+
+### GET `/reportes/comprobantes/tasa-aprobacion-evaluadores` - Eficiencia por evaluador
+```
+Query: ?desde=&hasta=&limit=20
+
+Response:
+{
+  "items": [
+    {
+      "id_evaluador": 2,
+      "evaluador": "Laura Gómez",
+      "total_comprobantes": 30,
+      "aprobados": 24,
+      "rechazados": 4,
+      "pendientes": 2,
+      "tasa_aprobacion_porcentaje": 80.0
+    }
+  ]
+}
+```
+
+### GET `/reportes/marketplace/top-productos-chats` - Top productos con más chats iniciados
+```
+Query: ?desde=&hasta=&limit=10
+
+Response:
+{
+  "items": [
+    {
+      "id_marketplace": 5,
+      "producto": "Laptop Dell",
+      "id_empresa": 1,
+      "empresa": "Acme Corp",
+      "chats_iniciados": 17,
+      "total_mensajes": 63
+    }
+  ]
+}
+```
+
+### GET `/reportes/empresas/top-rating-reviews` - Top empresas por rating y volumen
+```
+Query: ?desde=&hasta=&limit=10
+
+Response:
+{
+  "items": [
+    {
+      "id_empresa": 1,
+      "empresa": "Acme Corp",
+      "rating_promedio": 4.75,
+      "total_reviews": 48
+    }
+  ]
+}
+```
+
+Permisos:
+- Requieren permiso `ver_reportes`.
+- Por configuración actual del seed, este permiso está asignado al rol admin.
+
 ### GET `/comprobantes/{comprobante_id}/timeline` - Timeline de Transacción
 Devuelve progreso compra/registro/validación para frontend
 ```
