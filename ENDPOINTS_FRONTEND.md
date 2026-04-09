@@ -417,6 +417,47 @@ Response: { mensaje...actualizado }
 Response: { "detail": "Mensaje desactivado" }
 ```
 
+### POST `/archivos-mensajes/upload` - Subir Archivo de Mensaje
+Subir imagen asociada a un mensaje (multipart/form-data)
+```
+Body: id_mensaje=1, archivo=<imagen.jpg|png|webp> (máx 5MB)
+
+Response:
+{
+  "id": 10,
+  "id_mensaje": 1,
+  "url_imagen": "/uploads/mensajes/abc123.jpg"
+}
+```
+
+### POST `/comprobantes/registrar-desde-archivo` - Registrar Comprobante con Archivo
+Sube archivo del comprobante y crea el comprobante en una sola operación
+```
+Body (multipart/form-data):
+  id_mensaje=1
+  id_empleado_evaluador=2
+  recibo_valido=true
+  cantidad_recibida=120000
+  archivo=<imagen.jpg|png|webp> (máx 5MB)
+
+Response:
+{
+  "message": "Comprobante registrado correctamente",
+  "comprobante": {
+    "id": 3,
+    "id_archivo": 10,
+    "id_empleado_evaluador": 2,
+    "recibo_valido": true,
+    "cantidad_recibida": 120000
+  },
+  "archivo": {
+    "id": 10,
+    "id_mensaje": 1,
+    "url_imagen": "/uploads/comprobantes/def456.jpg"
+  }
+}
+```
+
 ---
 
 ## 👤 USUARIOS (Mi Perfil)

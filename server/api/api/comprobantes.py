@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db.conexion import get_db
-from api.models.models import Comprobante
+from api.models.models import Comprobante, ArchivoMensaje
 from api.schemas.schemas import ComprobanteCreate, ComprobanteResponse
 from api.api.auth import can_view_deleted_records, require_permission
+from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -96,3 +97,53 @@ async def restore_comprobante(
     db_item.deleted_at = None
     await db.commit()
     return {"detail": "Comprobante restaurado"}
+
+
+@router.post("/comprobantes/registrar-desde-archivo", status_code=201)
+async def registrar_comprobante_desde_archivo(
+    id_mensaje: int = Form(...),
+    id_empleado_evaluador: int = Form(...),
+    recibo_valido: bool = Form(...),
+    cantidad_recibida: float = Form(...),
+    archivo: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Flujo completo:
+    1) Sube imagen del comprobante
+    2) Crea registro en archivos_mensajes
+    3) Crea comprobante asociado
+    """
+    upload_dir = ensure_upload_dir(get_upload_root(), "comprobantes")
+    file_name = await save_upload_file(archivo, upload_dir)
+    file_url = build_public_url(file_name, "comprobantes")
+
+    archivo_item = ArchivoMensaje(id_mensaje=id_mensaje, url_imagen=file_url)
+    db.add(archivo_item)
+    await db.flush()
+
+    comprobante = Comprobante(
+        id_archivo=archivo_item.id,
+        id_empleado_evaluador=id_empleado_evaluador,
+        recibo_valido=recibo_valido,
+        cantidad_recibida=cantidad_recibida,
+    )
+    db.add(comprobante)
+    await db.commit()
+    await db.refresh(comprobante)
+
+    return {
+        "message": "Comprobante registrado correctamente",
+        "comprobante": {
+            "id": comprobante.id,
+            "id_archivo": comprobante.id_archivo,
+            "id_empleado_evaluador": comprobante.id_empleado_evaluador,
+            "recibo_valido": comprobante.recibo_valido,
+            "cantidad_recibida": comprobante.cantidad_recibida,
+        },
+        "archivo": {
+            "id": archivo_item.id,
+            "id_mensaje": archivo_item.id_mensaje,
+            "url_imagen": archivo_item.url_imagen,
+        },
+    }
