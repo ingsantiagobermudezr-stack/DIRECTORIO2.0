@@ -296,10 +296,19 @@ Request:
 Response: { producto...creado }
 ```
 
+Reglas de integridad:
+- `stock < 0` => `400 Bad Request`
+- Si `stock = 0`, el backend fuerza `id_estado` a `SIN STOCK` o `INACTIVO` (si existe en catálogo).
+
 ### PUT `/marketplace/{id_marketplace}` - Editar Producto ⚠️ Requiere `modificar_marketplace`
 ```
 Response: { producto...actualizado }
 ```
+
+Reglas de integridad:
+- `stock < 0` => `400 Bad Request`
+- Si `stock = 0`, el backend fuerza `id_estado` a `SIN STOCK` o `INACTIVO`.
+- Si el producto está eliminado (`deleted_at`), no permite editar `precio` ni `stock` (`409 Conflict`).
 
 ### POST `/marketplace/{id_marketplace}/imagenes/upload` - Subir Imágenes ⚠️ Requiere `modificar_marketplace`
 Subir una o múltiples imágenes de producto (multipart/form-data)

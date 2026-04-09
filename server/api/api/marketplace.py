@@ -2,18 +2,36 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Marketplace, Empresa, ImagenMarketplace
+from api.models.models import Marketplace, Empresa, ImagenMarketplace, EstadoMarketplace
 from api.schemas.schemas import MarketplaceCreate, MarketplaceResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
+
+
+async def _resolve_estado_stock_cero(db: AsyncSession) -> Optional[int]:
+    """Busca el estado para stock=0 priorizando 'sin stock' y luego 'inactivo'."""
+    query = select(EstadoMarketplace).where(
+        func.lower(EstadoMarketplace.nombre).in_(["sin stock", "sinstock", "inactivo"]),
+        EstadoMarketplace.deleted_at.is_(None),
+    )
+    result = await db.execute(query)
+    estados = result.scalars().all()
+
+    # Prioridad de nombres
+    priority = ["sin stock", "sinstock", "inactivo"]
+    for key in priority:
+        for estado in estados:
+            if (estado.nombre or "").strip().lower() == key:
+                return estado.id
+    return None
 
 # Listar productos/servicios marketplace con filtros
 @router.get("/marketplace", response_model=List[MarketplaceResponse])
@@ -138,7 +156,16 @@ async def create_marketplace(
     current_user = Depends(require_permission(Permisos.CREAR_MARKETPLACE)),
     db: AsyncSession = Depends(get_db)
 ):
-    db_item = Marketplace(**item.model_dump())
+    if item.stock is not None and item.stock < 0:
+        raise HTTPException(status_code=400, detail="No se permite stock negativo")
+
+    payload = item.model_dump()
+    if payload.get("stock") == 0:
+        estado_id = await _resolve_estado_stock_cero(db)
+        if estado_id is not None:
+            payload["id_estado"] = estado_id
+
+    db_item = Marketplace(**payload)
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
@@ -156,7 +183,25 @@ async def update_marketplace(
     db_item = result.scalars().first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Marketplace item not found")
-    for key, value in item.model_dump().items():
+
+    if item.stock is not None and item.stock < 0:
+        raise HTTPException(status_code=400, detail="No se permite stock negativo")
+
+    if db_item.deleted_at is not None and (
+        item.precio != db_item.precio or item.stock != db_item.stock
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="No se permite editar precio/stock en productos eliminados",
+        )
+
+    payload = item.model_dump()
+    if payload.get("stock") == 0:
+        estado_id = await _resolve_estado_stock_cero(db)
+        if estado_id is not None:
+            payload["id_estado"] = estado_id
+
+    for key, value in payload.items():
         setattr(db_item, key, value)
     await db.commit()
     await db.refresh(db_item)
