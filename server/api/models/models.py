@@ -96,7 +96,6 @@ class Usuario(Base):
     nombre = Column(String(100), nullable=False)
     apellido = Column(String(100), nullable=False)
     correo = Column(String(100), unique=True, nullable=False)
-    telefono = Column(String(20), nullable=True)
     id_rol = Column(Integer, ForeignKey('roles.id'), nullable=True)
     id_empresa = Column(Integer, ForeignKey('empresas.id'), nullable=True)
     password = Column(String(255), nullable=False)

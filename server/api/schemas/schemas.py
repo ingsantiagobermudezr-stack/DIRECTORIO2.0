@@ -174,7 +174,6 @@ class UsuarioBase(BaseModel):
     nombre: constr(min_length=1, max_length=100)
     apellido: constr(min_length=1, max_length=100)
     correo: EmailStr
-    telefono: Optional[constr(min_length=7, max_length=20)] = None
     password: Optional[str] = None  # Cambiado a Optional para Response
     rol: Optional[str] = None
     id_rol: Optional[int] = None
@@ -210,7 +209,6 @@ class UsuarioResponse(BaseModel):
     nombre: str
     apellido: str
     correo: str
-    telefono: Optional[str] = None
     rol: Optional[str] = None
     id_rol: Optional[int] = None
     id_empresa: Optional[int] = None

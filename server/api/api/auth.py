@@ -64,11 +64,7 @@ def _extract_auth_context(user: models.Usuario) -> tuple[str | None, list[str]]:
 def _has_permission(current_user: Optional[models.Usuario], permission_key: str) -> bool:
     if not current_user:
         return False
-    if getattr(current_user, "rol", None) == "admin":
-        return True
-    rol_nombre, permisos = _extract_auth_context(current_user)
-    if rol_nombre == "admin":
-        return True
+    _, permisos = _extract_auth_context(current_user)
     return permission_key in permisos
 
 async def authenticate_user(db: AsyncSession, correo: str, password: str):
