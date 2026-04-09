@@ -54,7 +54,6 @@ routers = [
     ("api.api.roles", "/api", "Roles"),
     ("api.api.permisos", "/api", "Permisos"),
     ("api.api.paises", "/api", "Paises"),
-    ("api.api.productos", "/api", "Productos"),
     ("api.api.auditoria", "/api", "Auditoria"),
     ("api.api.admin", "/api", "Admin"),
 ]
