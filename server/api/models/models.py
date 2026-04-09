@@ -6,8 +6,8 @@ from api.db.conexion import Base
 # Asociación many-to-many entre roles y permisos
 role_permiso = Table(
     'roles_permisos', Base.metadata,
-    Column('id_rol', Integer, ForeignKey('roles.id')),
-    Column('id_permiso', Integer, ForeignKey('permisos.id'))
+    Column('id_rol', Integer, ForeignKey('roles.id'), primary_key=True),
+    Column('id_permiso', Integer, ForeignKey('permisos.id'), primary_key=True)
 )
 
 # Modelo para País

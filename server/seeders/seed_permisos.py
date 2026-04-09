@@ -1,12 +1,33 @@
-from seed_roles import Roles
+try:
+  from seed_roles import Roles
+except ImportError:
+  from .seed_roles import Roles
+from enum import Enum
+
+class Permisos(Enum):
+  CREAR_EMPRESA = 'crear_empresa'
+  VER_REGISTROS_ELIMINADOS = 'ver_registros_eliminados'
+  RESTAURAR_REGISTROS_ELIMINADOS = 'restaurar_registros_eliminados'
 
 PERMISOS = {
-  'CREAR_EMPRESA': {
+  Permisos.CREAR_EMPRESA: {
     'id': 1,
-    'key': 'crear_empresa',
+    'key': Permisos.CREAR_EMPRESA.value,
     'descripcion': 'Permite crear nuevas empresas en el sistema',
     'roles_aceptados': [Roles.ADMIN],
-  }
+  },
+  Permisos.VER_REGISTROS_ELIMINADOS: {
+    'id': 2,
+    'key': Permisos.VER_REGISTROS_ELIMINADOS.value,
+    'descripcion': 'Permite ver registros que han sido eliminados (deleted_at no es NULL)',
+    'roles_aceptados': [Roles.ADMIN],
+  },
+  Permisos.RESTAURAR_REGISTROS_ELIMINADOS: {
+    'id': 3,
+    'key': Permisos.RESTAURAR_REGISTROS_ELIMINADOS.value,
+    'descripcion': 'Permite restaurar registros que han sido eliminados (establecer deleted_at a NULL)',
+    'roles_aceptados': [Roles.ADMIN],
+  },
 }
 
 async def seed_permisos(run_sql_statements):

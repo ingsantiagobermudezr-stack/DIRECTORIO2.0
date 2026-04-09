@@ -1,6 +1,6 @@
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = PasswordHash.recommended()
 
 async def seed_admin_user(run_sql_statements):
     from sqlalchemy import text
@@ -10,7 +10,7 @@ async def seed_admin_user(run_sql_statements):
     sql_statements = [
         text(f"""
 INSERT INTO usuarios (id, nombre, apellido, correo, telefono, id_rol, id_empresa, password, deleted_at) VALUES
-(1, 'Administrador', 'Sistema', 'admin@directorio.com', '', 1, NULL, '{hashed_password}', NULL)
+(1, 'Administrador', 'Sistema', 'admin@admin.com', '', 1, NULL, '{hashed_password}', NULL)
 ON CONFLICT (correo) DO UPDATE SET
     nombre = EXCLUDED.nombre,
     apellido = EXCLUDED.apellido,

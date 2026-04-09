@@ -6,6 +6,7 @@ from pwdlib import PasswordHash
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from seeders.seed_permisos import Permisos
 import os
 
 from api.models import models
@@ -186,17 +187,28 @@ async def require_admin(current_user: models.Usuario = Depends(get_current_user)
         return current_user
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Se requieren privilegios de administrador")
 
-async def require_permission(permission_name: str, current_user: models.Usuario = Depends(get_current_user)):
-    rol_nombre, permisos = _extract_auth_context(current_user)
-    print(f"Verificando permiso '{permission_name}' para usuario '{current_user.correo}' con rol '{rol_nombre}'")
+def require_permission(permission_name: Permisos):
+    async def dependency(current_user: models.Usuario = Depends(get_current_user)):
+        _, permisos = _extract_auth_context(current_user)
+        required_permission = permission_name.value if isinstance(permission_name, Permisos) else str(permission_name)
 
-    if permission_name in permisos:
-        return current_user
-    
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Se requiere el permiso '{permission_name}'")
+        if required_permission in permisos:
+            return current_user
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Se requiere el permiso '{required_permission}'",
+        )
+
+    return dependency
 
 @router.get("/me/permisos")
 async def me_permisos(current_user: models.Usuario = Depends(get_current_user)):
     """Devuelve la lista de permisos asociados al rol del usuario autenticado."""
     _, permisos = _extract_auth_context(current_user)
     return {"permisos": permisos}
+
+# @router.get('/puede')
+# async def puede_tener_permiso(current_user: models.Usuario = Depends(require_permission(Permisos.CREAR_EMPRESA))):
+#     """Ruta de prueba para verificar permisos específicos."""
+#     return {"message": "Tienes el permiso requerido para acceder a esta ruta."}
