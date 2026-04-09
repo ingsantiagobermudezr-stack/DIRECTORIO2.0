@@ -56,6 +56,10 @@ Response:
 }
 ```
 
+Regla de administración (actual):
+- Un usuario se considera admin solo si tiene rol `admin` y además el permiso crítico `modificar_roles`.
+- No existe dependencia por `id` hardcodeado.
+
 ---
 
 ## 🌍 DATOS GEOGRÁFICOS (Sin autenticación requerida)
@@ -984,6 +988,21 @@ Response:
 }
 ```
 
+### GET `/notificaciones/usuario/contar/` - Contar Total Notificaciones (autenticado)
+```
+Query opcional: ?sin_leer=true
+
+Response:
+{
+  "cantidad_total": 12
+}
+
+Si `sin_leer=true`:
+{
+  "cantidad_sin_leer": 3
+}
+```
+
 ### POST `/notificaciones/marcar-como-leida/{id_notificacion}` - Marcar Leída
 ```
 Response:
@@ -1034,7 +1053,45 @@ Ping/Pong:
 - Cliente envía: `ping`
 - Servidor responde: `{ "tipo": "pong" }`
 
+Tipos de notificación usados en negocio:
+- `new_message`
+- `new_review`
+- `favorite_price_change`
+- `comprobante_aprobado`
+- `comprobante_rechazado`
+
+---
+
+## 🧩 NORMALIZACIÓN DE CATÁLOGOS (Estados y Eventos)
+
+Para mantener compatibilidad durante transición, el backend guarda campos legacy y normalizados al mismo tiempo:
+
+- Comprobantes:
+  - legacy: `estado` (`pendiente|aprobado|rechazado`)
+  - normalizado: `id_estado_flujo` (FK a catálogo `estados_flujo`)
+- Eventos de marketplace:
+  - legacy: `tipo_evento` (`vista|click` y otros tipos de negocio)
+  - normalizado: `id_tipo_evento` (FK a catálogo `tipos_evento`)
+
+Reportería/funnel ya usa la forma normalizada (`EstadoFlujo.clave`, `TipoEvento.clave`) para agregaciones.
+
+Nota para frontend:
+- Seguir consumiendo `estado` y `tipo_evento` en respuestas actuales.
+- En fases siguientes puede migrarse visualización a catálogos (`id_estado_flujo`, `id_tipo_evento`) cuando se expongan endpoints dedicados.
+
+---
+
+## 📁 ARCHIVOS SUBIDOS (URLs públicas)
+
+Los archivos cargados por endpoints de upload se sirven de forma estática bajo:
+
+- `/uploads/empresas/...`
+- `/uploads/marketplace/...`
+- `/uploads/publicidades/...`
+- `/uploads/mensajes/...`
+- `/uploads/comprobantes/...`
+
 ---
 
 **Última actualización:** 9 de abril de 2026
-**Versión:** 1.0
+**Versión:** 1.1
