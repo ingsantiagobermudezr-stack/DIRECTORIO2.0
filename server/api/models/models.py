@@ -1,14 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from api.db.conexion import Base
-
-# Asociación many-to-many entre roles y permisos
-role_permiso = Table(
-    'roles_permisos', Base.metadata,
-    Column('id_rol', Integer, ForeignKey('roles.id')),
-    Column('id_permiso', Integer, ForeignKey('permisos.id'))
-)
 
 
 # Modelo para País
@@ -46,7 +39,7 @@ class Rol(Base):
     descripcion = Column(Text, nullable=True)
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
-    permisos = relationship('Permiso', secondary=role_permiso, back_populates='roles')
+    permisos = relationship('Permiso', back_populates='rol', cascade='all, delete-orphan')
     usuarios = relationship('Usuario', back_populates='rol_obj')
 
 
@@ -54,10 +47,14 @@ class Permiso(Base):
     __tablename__ = 'permisos'
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100), nullable=False, unique=True)
-    descripcion = Column(Text, nullable=True)
+    id_rol = Column(Integer, ForeignKey('roles.id'), nullable=False)
+    tabla = Column(String(100), nullable=False)
+    leer = Column(Boolean, nullable=False, default=False)
+    crear = Column(Boolean, nullable=False, default=False)
+    editar = Column(Boolean, nullable=False, default=False)
+    eliminar = Column(Boolean, nullable=False, default=False)
 
-    roles = relationship('Rol', secondary=role_permiso, back_populates='permisos')
+    rol = relationship('Rol', back_populates='permisos')
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
@@ -101,10 +98,13 @@ class Usuario(Base):
     correo = Column(String(100), unique=True, nullable=False)
     telefono = Column(String(20), nullable=True)
     id_rol = Column(Integer, ForeignKey('roles.id'), nullable=True)
-    rol_obj = relationship('Rol', back_populates='usuarios')
+    id_empresa = Column(Integer, ForeignKey('empresas.id'), nullable=True)
     password = Column(String(255), nullable=False)
+    rol_obj = relationship('Rol', back_populates='usuarios')
+    empresa = relationship("Empresa", back_populates="usuarios", foreign_keys=[id_empresa])
+    empresas_creadas = relationship("Empresa", back_populates="usuario_creador", foreign_keys="Empresa.id_usuario_creador")
 
-    # Relación con Resultado para almacenar historial de búsqueda
+    # Relación con Resultado para almacenar telemetría de búsqueda
     resultados = relationship("Resultado", back_populates="usuario", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="usuario", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
@@ -122,11 +122,14 @@ class Empresa(Base):
     telefono = Column(String(20))
     id_categoria = Column(Integer, ForeignKey('categorias.id'))
     id_municipio = Column(Integer, ForeignKey('municipios.id'))
+    id_usuario_creador = Column(Integer, ForeignKey('usuarios.id'), nullable=True)
     logo_url = Column(String(255), nullable=True)
 
     # Relaciones con otros modelos
     categoria = relationship("Categoria", back_populates="empresas")
     municipio = relationship("Municipio", back_populates="empresas")
+    usuarios = relationship("Usuario", back_populates="empresa", foreign_keys="Usuario.id_empresa")
+    usuario_creador = relationship("Usuario", back_populates="empresas_creadas", foreign_keys=[id_usuario_creador])
     publicidades = relationship("Publicidad", back_populates="empresa", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="empresa", cascade="all, delete-orphan")
     marketplaces = relationship("Marketplace", back_populates="empresa", cascade="all, delete-orphan")
@@ -237,13 +240,16 @@ class Review(Base):
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
-# Modelo para Resultado, que almacena el historial de búsqueda de cada usuario
+# Modelo para Resultado, que almacena telemetría de búsquedas de empresas
 class Resultado(Base):
     __tablename__ = 'resultados'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey('usuarios.id'))
-    criterio = Column(String(255), nullable=False)
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'), nullable=True)
+    termino_busqueda = Column(String(255), nullable=False)
+    cantidad_resultados = Column(Integer, nullable=False, default=0)
+    ip_origen = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
     fecha_hora = Column(DateTime, default=datetime.utcnow)
 
     # Relación con Usuario

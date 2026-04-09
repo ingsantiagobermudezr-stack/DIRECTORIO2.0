@@ -190,17 +190,21 @@ class ReviewResponseCreate(BaseModel):
 
 # Esquemas para Resultado
 class ResultadoBase(BaseModel):
-    id_usuario: int
-    criterio: str
+    id_usuario: Optional[int] = None
+    termino_busqueda: str
+    cantidad_resultados: int = 0
+    ip_origen: Optional[str] = None
+    user_agent: Optional[str] = None
 
 class ResultadoCreate(ResultadoBase):
     pass
 
 class ResultadoResponse(ResultadoBase):
     """
-    Respuesta para resultados de búsqueda
+    Respuesta para telemetría de búsquedas
     """
-    id_resultado: int
+    id: int
+    fecha_hora: datetime
 
     model_config = {"from_attributes": True}
 
