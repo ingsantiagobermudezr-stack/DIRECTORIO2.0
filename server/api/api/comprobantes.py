@@ -5,9 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Comprobante, ArchivoMensaje
+from api.models.models import Comprobante, ArchivoMensaje, Mensaje
 from api.schemas.schemas import ComprobanteCreate, ComprobanteResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user
+from api.api.notificaciones import create_business_notification
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
@@ -21,6 +22,48 @@ def _is_admin(user) -> bool:
 
 def _puede_resolver_comprobante(user, comprobante: Comprobante) -> bool:
     return _is_admin(user) or user.id == comprobante.id_empleado_evaluador
+
+
+async def _notificar_estado_comprobante(
+    db: AsyncSession,
+    *,
+    comprobante: Comprobante,
+    estado: str,
+    actor_id: int,
+) -> None:
+    archivo_result = await db.execute(
+        select(ArchivoMensaje)
+        .options(joinedload(ArchivoMensaje.mensaje_rel))
+        .where(ArchivoMensaje.id == comprobante.id_archivo, ArchivoMensaje.deleted_at.is_(None))
+    )
+    archivo = archivo_result.scalars().first()
+    mensaje: Mensaje | None = getattr(archivo, "mensaje_rel", None)
+    if not mensaje:
+        return
+
+    recipients = {
+        mensaje.id_usuario_creador_chat,
+        mensaje.id_usuario_enviador_mensaje,
+    }
+    recipients.discard(actor_id)
+
+    if not recipients:
+        return
+
+    contenido = f"Tu comprobante fue {estado}"
+    tipo = "comprobante_aprobado" if estado == "aprobado" else "comprobante_rechazado"
+
+    for recipient_id in recipients:
+        try:
+            await create_business_notification(
+                db,
+                id_usuario_destinatario=recipient_id,
+                tipo=tipo,
+                contenido=contenido,
+                id_usuario_remitente=actor_id,
+            )
+        except HTTPException:
+            continue
 
 
 @router.post("/comprobantes/", response_model=ComprobanteResponse, status_code=201)
@@ -190,6 +233,13 @@ async def aprobar_comprobante(
     await db.commit()
     await db.refresh(comprobante)
 
+    await _notificar_estado_comprobante(
+        db,
+        comprobante=comprobante,
+        estado="aprobado",
+        actor_id=current_user.id,
+    )
+
     return {"message": "Comprobante aprobado", "id": comprobante.id, "estado": comprobante.estado}
 
 
@@ -217,6 +267,13 @@ async def rechazar_comprobante(
     comprobante.fecha_resolucion = datetime.utcnow()
     await db.commit()
     await db.refresh(comprobante)
+
+    await _notificar_estado_comprobante(
+        db,
+        comprobante=comprobante,
+        estado="rechazado",
+        actor_id=current_user.id,
+    )
 
     return {"message": "Comprobante rechazado", "id": comprobante.id, "estado": comprobante.estado}
 

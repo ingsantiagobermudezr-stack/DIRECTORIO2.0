@@ -7,9 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Marketplace, Empresa, ImagenMarketplace, EstadoMarketplace
+from api.models.models import Marketplace, Empresa, ImagenMarketplace, EstadoMarketplace, UsuarioFavorito
 from api.schemas.schemas import MarketplaceCreate, MarketplaceResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional
+from api.api.notificaciones import create_business_notification
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
@@ -195,6 +196,7 @@ async def update_marketplace(
             detail="No se permite editar precio/stock en productos eliminados",
         )
 
+    precio_anterior = db_item.precio
     payload = item.model_dump()
     if payload.get("stock") == 0:
         estado_id = await _resolve_estado_stock_cero(db)
@@ -205,6 +207,33 @@ async def update_marketplace(
         setattr(db_item, key, value)
     await db.commit()
     await db.refresh(db_item)
+
+    if precio_anterior != db_item.precio:
+        fav_result = await db.execute(
+            select(UsuarioFavorito.id_usuario)
+            .where(
+                UsuarioFavorito.id_marketplace == db_item.id,
+                UsuarioFavorito.deleted_at.is_(None),
+            )
+        )
+        recipient_ids = {user_id for user_id in fav_result.scalars().all() if user_id is not None}
+
+        if recipient_ids:
+            for recipient_id in recipient_ids:
+                try:
+                    await create_business_notification(
+                        db,
+                        id_usuario_destinatario=recipient_id,
+                        tipo="favorite_price_change",
+                        contenido=(
+                            f"El producto '{db_item.nombre}' cambió de precio: "
+                            f"{precio_anterior} -> {db_item.precio}"
+                        ),
+                        id_usuario_remitente=None,
+                    )
+                except HTTPException:
+                    continue
+
     return db_item
 
 # Eliminar producto/servicio

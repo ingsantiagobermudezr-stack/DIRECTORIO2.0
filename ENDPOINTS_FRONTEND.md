@@ -309,6 +309,7 @@ Reglas de integridad:
 - `stock < 0` => `400 Bad Request`
 - Si `stock = 0`, el backend fuerza `id_estado` a `SIN STOCK` o `INACTIVO`.
 - Si el producto está eliminado (`deleted_at`), no permite editar `precio` ni `stock` (`409 Conflict`).
+- Si cambia `precio`, se generan notificaciones automáticas para usuarios que tengan el producto en favoritos.
 
 ### POST `/marketplace/{id_marketplace}/imagenes/upload` - Subir Imágenes ⚠️ Requiere `modificar_marketplace`
 Subir una o múltiples imágenes de producto (multipart/form-data)
@@ -370,6 +371,9 @@ Request:
 Response: { reseña...creada }
 ```
 
+Evento automático:
+- Crea notificación `new_review` para el creador de la empresa (si no es el mismo usuario que reseña).
+
 ### PUT `/reviews/{review_id}` - Editar Reseña ⚠️ Requiere `modificar_reviews`
 ```
 Response: { reseña...actualizada }
@@ -415,6 +419,9 @@ Request:
 
 Response: { mensaje...creado }
 ```
+
+Evento automático:
+- Crea notificación `new_message` para el vendedor propietario de la empresa del producto.
 
 ### PUT `/mensajes/{mensaje_id}` - Editar Mensaje ⚠️ Requiere `modificar_mensajes`
 ```
@@ -478,6 +485,9 @@ Response:
 }
 ```
 
+Evento automático:
+- Crea notificación `comprobante_aprobado` para usuarios involucrados en el chat asociado.
+
 ### POST `/comprobantes/{comprobante_id}/rechazar` - Rechazar Comprobante
 Solo el evaluador asignado o admin puede cambiar estado final
 ```
@@ -488,6 +498,9 @@ Response:
   "estado": "rechazado"
 }
 ```
+
+Evento automático:
+- Crea notificación `comprobante_rechazado` para usuarios involucrados en el chat asociado.
 
 ### GET `/comprobantes/{comprobante_id}/timeline` - Timeline de Transacción
 Devuelve progreso compra/registro/validación para frontend

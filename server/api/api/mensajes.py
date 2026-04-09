@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Mensaje
+from api.models.models import Mensaje, Marketplace
 from api.schemas.schemas import MensajeCreate, MensajeResponse
 from api.api.auth import can_view_deleted_records, require_permission
+from api.api.notificaciones import create_business_notification
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -22,6 +24,28 @@ async def create_mensaje(
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
+
+    marketplace_result = await db.execute(
+        select(Marketplace)
+        .options(joinedload(Marketplace.empresa))
+        .where(Marketplace.id == db_item.id_marketplace, Marketplace.deleted_at.is_(None))
+    )
+    marketplace = marketplace_result.scalars().first()
+
+    vendedor_id = getattr(getattr(marketplace, "empresa", None), "id_usuario_creador", None)
+    if vendedor_id and vendedor_id != db_item.id_usuario_enviador_mensaje:
+        try:
+            await create_business_notification(
+                db,
+                id_usuario_destinatario=vendedor_id,
+                tipo="new_message",
+                contenido=f"Tienes un nuevo mensaje sobre '{marketplace.nombre}'",
+                id_usuario_remitente=db_item.id_usuario_enviador_mensaje,
+            )
+        except HTTPException:
+            # No afecta la creación del mensaje si falla la notificación.
+            pass
+
     return db_item
 
 

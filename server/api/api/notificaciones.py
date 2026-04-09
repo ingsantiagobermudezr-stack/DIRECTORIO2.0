@@ -53,6 +53,51 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def create_business_notification(
+    db: AsyncSession,
+    *,
+    id_usuario_destinatario: int,
+    tipo: str,
+    contenido: str,
+    id_usuario_remitente: int | None = None,
+) -> Notificacion:
+    """Crea una notificación persistida y la emite por WebSocket al destinatario."""
+    if id_usuario_remitente is not None and id_usuario_remitente == id_usuario_destinatario:
+        # Evita auto-notificaciones innecesarias.
+        raise HTTPException(status_code=400, detail="No se envían auto-notificaciones")
+
+    usuario_dest = await db.execute(
+        select(Usuario).where(Usuario.id == id_usuario_destinatario)
+    )
+    if not usuario_dest.scalars().first():
+        raise HTTPException(status_code=404, detail="Usuario destinatario no encontrado")
+
+    nueva_notificacion = Notificacion(
+        id_usuario_remitente=id_usuario_remitente,
+        id_usuario_destinatario=id_usuario_destinatario,
+        tipo=tipo,
+        contenido=contenido,
+        leido=False,
+    )
+    db.add(nueva_notificacion)
+    await db.commit()
+    await db.refresh(nueva_notificacion)
+
+    await manager.broadcast_to_user(
+        id_usuario_destinatario,
+        {
+            "tipo": "nueva_notificacion",
+            "id": nueva_notificacion.id,
+            "contenido": nueva_notificacion.contenido,
+            "tipo_notificacion": nueva_notificacion.tipo,
+            "fecha_creacion": nueva_notificacion.fecha_creacion.isoformat(),
+            "remitente_id": nueva_notificacion.id_usuario_remitente,
+        },
+    )
+
+    return nueva_notificacion
+
+
 def _extract_ws_token(websocket: WebSocket) -> str | None:
     """Extrae JWT desde query param `token` o header Authorization."""
     token = websocket.query_params.get("token")
@@ -264,38 +309,13 @@ async def crear_notificacion(
     Crear una nueva notificación (típicamente usado internamente por otros endpoints)
     El id_usuario_remitente puede ser None para notificaciones del sistema
     """
-    # Validar que el usuario destinatario existe
-    query_usuario = select(Usuario).where(Usuario.id == notificacion_data.id_usuario_destinatario)
-    result_usuario = await db.execute(query_usuario)
-    usuario_dest = result_usuario.scalars().first()
-    
-    if not usuario_dest:
-        raise HTTPException(status_code=404, detail="Usuario destinatario no encontrado")
-    
-    # Crear la notificación
-    nueva_notificacion = Notificacion(
-        id_usuario_remitente=notificacion_data.id_usuario_remitente or current_user["id"],
+    remitente_id = notificacion_data.id_usuario_remitente or getattr(current_user, "id", None)
+    nueva_notificacion = await create_business_notification(
+        db,
         id_usuario_destinatario=notificacion_data.id_usuario_destinatario,
         tipo=notificacion_data.tipo,
         contenido=notificacion_data.contenido,
-        leido=False
-    )
-    
-    db.add(nueva_notificacion)
-    await db.commit()
-    await db.refresh(nueva_notificacion)
-    
-    # Broadcast WebSocket a usuario destinatario
-    await manager.broadcast_to_user(
-        usuario_dest.id,
-        {
-            "tipo": "nueva_notificacion",
-            "id": nueva_notificacion.id,
-            "contenido": nueva_notificacion.contenido,
-            "tipo_notificacion": nueva_notificacion.tipo,
-            "fecha_creacion": nueva_notificacion.fecha_creacion.isoformat(),
-            "remitente_id": nueva_notificacion.id_usuario_remitente
-        }
+        id_usuario_remitente=remitente_id,
     )
     
     return {"id": nueva_notificacion.id, "message": "Notificación creada correctamente"}
