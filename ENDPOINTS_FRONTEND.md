@@ -543,14 +543,82 @@ Response: { "message": "Producto eliminado de favoritos" }
 
 ---
 
+## � BÚSQUEDA GLOBAL
+
+### GET `/busqueda/global/` - Búsqueda Unificada
+Buscar en empresas + marketplace con un solo query
+```
+Query:
+  ?query=laptop (mínimo 2, máximo 100 caracteres)
+  &skip=0
+  &limit=50
+
+Response:
+{
+  "query": "laptop",
+  "total_empresas": 3,
+  "total_productos": 12,
+  "empresas": [
+    {
+      "id": 1,
+      "nombre": "Acme Corp",
+      "nit": "123456789",
+      "correo": "info@acme.com",
+      "direccion": "Cra 7 #45-51",
+      "telefono": "3101234567",
+      "logo_url": "https://...",
+      "categoria": { "id": 1, "nombre": "Tecnología" },
+      "municipio": { "id": 1, "nombre": "Bogotá" },
+      "tipo": "empresa"
+    }
+  ],
+  "productos": [
+    {
+      "id": 5,
+      "nombre": "Laptop Dell XPS 15",
+      "descripcion": "Laptop profesional de alta gama",
+      "precio": 4500000,
+      "stock": 3,
+      "fecha_publicacion": "2026-04-05T10:00:00",
+      "categoria": { "id": 1, "nombre": "Tecnología" },
+      "empresa": { "id": 1, "nombre": "Acme Corp" },
+      "estado": { "id": 1, "nombre": "ACTIVO" },
+      "tipo": "producto"
+    }
+  ]
+}
+```
+
+### GET `/busqueda/sugerencias/` - Autocompletar Búsqueda
+Obtener sugerencias para autocompletar en barra de búsqueda
+```
+Query:
+  ?query=lap (mínimo 1, máximo 50 caracteres)
+  &limit=10
+
+Response:
+{
+  "query": "lap",
+  "sugerencias": [
+    "Laptop Dell",
+    "Laptop HP",
+    "Laptop Apple",
+    "Laptops Premium"
+  ],
+  "cantidad": 4
+}
+```
+
+---
+
 ## 🚀 PRÓXIMAS MEJORAS SUGERIDAS
 
 1. **Upload de Imágenes**: Agregar endpoints para subir fotos (empresas, marketplace, publicidades)
 2. ✅ **Filtro de Rating**: Filtrar empresas por calificación promedio (parámetro `rating_min`)
 3. ✅ **Wishlist**: Agregar/eliminar favoritos (tabla `usuarios_favoritos` implementada)
-4. **Carrito de Compras**: Funcionalidad e-commerce básica
-5. **Notificaciones**: Sistema de notificaciones en tiempo real (WebSocket)
-6. **Búsqueda Global**: Un endpoint que busque en empresas + marketplace simultáneamente
+4. ✅ **Búsqueda Global**: Endpoints `/busqueda/global/` y `/busqueda/sugerencias/` implementados
+5. **Carrito de Compras**: Funcionalidad e-commerce básica
+6. **Notificaciones**: Sistema de notificaciones en tiempo real (WebSocket)
 
 ---
 

@@ -56,6 +56,7 @@ Estos servicios ya tienen todo lo necesario:
 - ✅ **mensajes.py** - Chat GET/POST/PUT
 - ✅ **publicidad.py** - Anuncios GET/POST/PUT
 - ✅ **favoritos.py** - Wishlist (Agregar/eliminar/listar favoritos)
+- ✅ **busqueda.py** - Búsqueda global (empresas + marketplace)
 
 ### 🗑️ SERVICIOS BACKEND-ONLY (NO para frontend)
 
@@ -202,6 +203,7 @@ POST /roles - Crear roles
 - [ ] Validación de permisos en frontend antes de intentar acciones
 - [ ] Cacheo de paises/departamentos/municipios
 - [x] ✅ **Sistema de Favoritos** - IMPLEMENTADO
+- [x] ✅ **Búsqueda Global** (empresas + marketplace) - IMPLEMENTADO
 
 ### Priority 2 (Media)
 - [ ] Sistema de favoritos/wishlist
@@ -320,6 +322,106 @@ Authorization: Bearer {token}
 GET /api/favoritos/usuario/contar/
 Authorization: Bearer {token}
 ```
+
+---
+
+**Fecha:** 9 de abril de 2026
+**Estado:** En desarrollo
+**Versión:** 1.0
+
+---
+
+## 🔍 BÚSQUEDA GLOBAL (BUSQUEDA.PY) - ✅ IMPLEMENTADO
+
+### 📊 ENDPOINTS DISPONIBLES
+
+| Endpoint | Método | Descripción |
+|----------|--------|------------|
+| `/busqueda/global/` | GET | Buscar en empresas + marketplace |
+| `/busqueda/sugerencias/` | GET | Autocompletar para barra de búsqueda |
+
+### 🔍 GET `/busqueda/global/` - Búsqueda Unificada
+
+**Parámetros:**
+- `query` (required): Término de búsqueda (2-100 caracteres)
+- `skip` (default 0): Offset para paginación
+- `limit` (default 50): Cantidad de resultados (1-100)
+
+**Búsqueda en:**
+- Empresas: nombre, correo
+- Marketplace: nombre, descripción
+
+**Ejemplo:**
+```bash
+GET /api/busqueda/global/?query=laptop&skip=0&limit=50
+```
+
+**Response:**
+```json
+{
+  "query": "laptop",
+  "total_empresas": 3,
+  "total_productos": 12,
+  "empresas": [
+    {
+      "id": 1,
+      "nombre": "Acme Corp",
+      "nit": "123456789",
+      "correo": "info@acme.com",
+      "categoria": { "id": 1, "nombre": "Tecnología" },
+      "tipo": "empresa"
+    }
+  ],
+  "productos": [
+    {
+      "id": 5,
+      "nombre": "Laptop Dell XPS 15",
+      "precio": 4500000,
+      "empresa": { "id": 1, "nombre": "Acme Corp" },
+      "tipo": "producto"
+    }
+  ]
+}
+```
+
+### 💡 GET `/busqueda/sugerencias/` - Autocompletar
+
+**Parámetros:**
+- `query` (required): Prefijo de búsqueda (1-50 caracteres)
+- `limit` (default 10): Cantidad de sugerencias (1-50)
+
+**Útil para:**
+- Autocompletar en barra de búsqueda
+- Sugerencias mientras el usuario escribe
+
+**Ejemplo:**
+```bash
+GET /api/busqueda/sugerencias/?query=lap&limit=10
+```
+
+**Response:**
+```json
+{
+  "query": "lap",
+  "sugerencias": [
+    "Laptop Dell",
+    "Laptop HP",
+    "Laptop Apple",
+    "Laptops Premium"
+  ],
+  "cantidad": 4
+}
+```
+
+### ⚙️ Características Técnicas
+
+- ✅ Busca en ambas tablas simultáneamente
+- ✅ Respeta soft delete (no muestra eliminados)
+- ✅ Respeta permisos de usuario (ver registros eliminados)
+- ✅ DISTINCT en sugerencias (sin duplicados)
+- ✅ Paginación configurable
+- ✅ Validación de longitud de query
+- ✅ Lazy loading de relaciones
 
 ---
 

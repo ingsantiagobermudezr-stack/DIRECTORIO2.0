@@ -62,6 +62,7 @@ routers = [
     ("api.api.comprobantes", "/api", "Comprobantes"),
     ("api.api.paises", "/api", "Paises"),
     ("api.api.favoritos", "/api", "Favoritos"),
+    ("api.api.busqueda", "/api", "Búsqueda"),
     ("api.api.admin", "/api", "Admin"),
 ]
 
