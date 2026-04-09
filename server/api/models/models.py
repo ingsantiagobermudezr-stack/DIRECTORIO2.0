@@ -109,6 +109,7 @@ class Usuario(Base):
     mensajes_creados_chat = relationship("Mensaje", back_populates="usuario_creador_chat", foreign_keys="Mensaje.id_usuario_creador_chat")
     mensajes_enviados = relationship("Mensaje", back_populates="usuario_enviador_mensaje", foreign_keys="Mensaje.id_usuario_enviador_mensaje")
     comprobantes_evaluados = relationship("Comprobante", back_populates="empleado_evaluador", foreign_keys="Comprobante.id_empleado_evaluador")
+    favoritos = relationship("UsuarioFavorito", back_populates="usuario", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
@@ -223,6 +224,7 @@ class Marketplace(Base):
     estado = relationship("EstadoMarketplace", back_populates="marketplaces")
     empresa = relationship("Empresa", back_populates="marketplaces")
     categoria = relationship("Categoria", back_populates="marketplaces")
+    favoritos = relationship("UsuarioFavorito", back_populates="marketplace", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
@@ -300,4 +302,19 @@ class Resultado(Base):
 
     # Relación con Usuario
     usuario = relationship("Usuario", back_populates="resultados")
-    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete  
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
+
+
+# Modelo para UsuarioFavorito (Wishlist - productos favoritos del usuario)
+class UsuarioFavorito(Base):
+    __tablename__ = 'usuarios_favoritos'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
+    id_marketplace = Column(Integer, ForeignKey('marketplaces.id'), nullable=False)
+    fecha_agregado = Column(DateTime, default=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
+
+    # Relaciones
+    usuario = relationship("Usuario", back_populates="favoritos")
+    marketplace = relationship("Marketplace", back_populates="favoritos")

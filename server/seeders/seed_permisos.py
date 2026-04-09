@@ -56,6 +56,11 @@ class Permisos(Enum):
   # Permisos para Mensajes
   CREAR_MENSAJES = 'crear_mensajes'
   MODIFICAR_MENSAJES = 'modificar_mensajes'
+  
+  # Permisos para Favoritos
+  VER_FAVORITOS = 'ver_favoritos'
+  CREAR_FAVORITOS = 'crear_favoritos'
+  ELIMINAR_FAVORITOS = 'eliminar_favoritos'
 
 PERMISOS = {
   Permisos.CREAR_EMPRESA: {
@@ -224,6 +229,25 @@ PERMISOS = {
     'id': 26,
     'key': Permisos.MODIFICAR_MENSAJES.value,
     'descripcion': 'Permite modificar mensajes existentes',
+    'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
+  },
+  # Permisos para Favoritos
+  Permisos.VER_FAVORITOS: {
+    'id': 27,
+    'key': Permisos.VER_FAVORITOS.value,
+    'descripcion': 'Permite ver la lista de favoritos (wishlist)',
+    'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
+  },
+  Permisos.CREAR_FAVORITOS: {
+    'id': 28,
+    'key': Permisos.CREAR_FAVORITOS.value,
+    'descripcion': 'Permite agregar productos a favoritos',
+    'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
+  },
+  Permisos.ELIMINAR_FAVORITOS: {
+    'id': 29,
+    'key': Permisos.ELIMINAR_FAVORITOS.value,
+    'descripcion': 'Permite eliminar productos de favoritos',
     'roles_aceptados': [Roles.ADMIN, Roles.USUARIO, Roles.EMPRESA],
   },
 }

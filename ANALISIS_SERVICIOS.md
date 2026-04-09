@@ -41,7 +41,7 @@
 - ✅ Lazy loading mejorado
 - ✅ Validaciones de integridad
 
-### ⏸️ SERVICIOS EXISTENTES Y COMPLETOS
+### ✅ SERVICIOS EXISTENTES Y COMPLETOS
 
 Estos servicios ya tienen todo lo necesario:
 - ✅ **paises.py** - GET endpoints para cascada geográfica
@@ -53,6 +53,7 @@ Estos servicios ya tienen todo lo necesario:
 - ✅ **review.py** - Reseñas GET/POST/PUT
 - ✅ **mensajes.py** - Chat GET/POST/PUT
 - ✅ **publicidad.py** - Anuncios GET/POST/PUT
+- ✅ **favoritos.py** - Wishlist (Agregar/eliminar/listar favoritos)
 
 ### 🗑️ SERVICIOS BACKEND-ONLY (NO para frontend)
 
@@ -198,6 +199,7 @@ POST /roles - Crear roles
 - [ ] Filtro por rating promedio en empresas
 - [ ] Validación de permisos en frontend antes de intentar acciones
 - [ ] Cacheo de paises/departamentos/municipios
+- [x] ✅ **Sistema de Favoritos** - IMPLEMENTADO
 
 ### Priority 2 (Media)
 - [ ] Sistema de favoritos/wishlist
@@ -242,12 +244,80 @@ POST /roles - Crear roles
 
 ---
 
-## 📚 ARCHIVOS RELACIONADOS
+## � ARCHIVOS RELACIONADOS
 
 - `ENDPOINTS_FRONTEND.md` - Documentación detallada de endpoints
 - `seeders/seed_permisos.py` - Definición de permisos
 - `seeders/seed_roles.py` - Definición de roles
 - `api/api/*.py` - Implementación de servicios
+- `api/models/models.py` - Modelos (incluye UsuarioFavorito)
+- `api/schemas/schemas.py` - Esquemas (incluye UsuarioFavoritoResponse)
+
+---
+
+## 🎁 SISTEMA DE FAVORITOS (WISHLIST) - ✅ IMPLEMENTADO
+
+### 📊 NUEVA TABLA: `usuarios_favoritos`
+
+```sql
+CREATE TABLE usuarios_favoritos (
+  id INTEGER PRIMARY KEY,
+  id_usuario INTEGER NOT NULL FOREIGN KEY (usuarios.id),
+  id_marketplace INTEGER NOT NULL FOREIGN KEY (marketplaces.id),
+  fecha_agregado DATETIME DEFAULT NOW(),
+  deleted_at DATETIME NULL
+);
+```
+
+### 📝 Modelo (models.py)
+```python
+class UsuarioFavorito(Base):
+    __tablename__ = 'usuarios_favoritos'
+    
+    id = Column(Integer, primary_key=True)
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
+    id_marketplace = Column(Integer, ForeignKey('marketplaces.id'), nullable=False)
+    fecha_agregado = Column(DateTime, default=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
+    
+    usuario = relationship("Usuario", back_populates="favoritos")
+    marketplace = relationship("Marketplace", back_populates="favoritos")
+```
+
+### 🔌 Endpoints Disponibles
+
+| Endpoint | Método | Descripción |
+|----------|--------|------------|
+| `/favoritos/usuario/` | GET | Listar mis favoritos (paginado) |
+| `/favoritos/usuario/contar/` | GET | Contar cuántos favoritos tengo |
+| `/favoritos/usuario/verificar/{id}` | GET | Verificar si producto está en favoritos |
+| `/favoritos/` | POST | Agregar a favoritos |
+| `/favoritos/{id}` | DELETE | Eliminar de favoritos |
+| `/favoritos/` | GET | Listar todos (solo admin) |
+
+### 💻 Uso en Frontend
+
+```javascript
+// Agregar a favoritos
+POST /api/favoritos/?id_marketplace=5
+Authorization: Bearer {token}
+
+// Obtener mis favoritos
+GET /api/favoritos/usuario/?skip=0&limit=50
+Authorization: Bearer {token}
+
+// Verificar si está en favoritos
+GET /api/favoritos/usuario/verificar/5
+Authorization: Bearer {token}
+
+// Eliminar de favoritos
+DELETE /api/favoritos/5
+Authorization: Bearer {token}
+
+// Contar favoritos
+GET /api/favoritos/usuario/contar/
+Authorization: Bearer {token}
+```
 
 ---
 

@@ -399,6 +399,39 @@ class ArchivoMensajeResponse(ArchivoMensajeBase):
     model_config = {"from_attributes": True}
 
 
+# Esquemas para Favoritos (Wishlist)
+class UsuarioFavoritoBase(BaseModel):
+    id_usuario: int
+    id_marketplace: int
+
+
+class UsuarioFavoritoCreate(UsuarioFavoritoBase):
+    pass
+
+
+class UsuarioFavoritoResponse(UsuarioFavoritoBase):
+    """
+    Respuesta para favoritos con detalles del producto
+    """
+    id: int
+    fecha_agregado: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UsuarioFavoritoResponseDetallado(BaseModel):
+    """
+    Respuesta detallada del favorito incluyendo datos del marketplace
+    """
+    id: int
+    id_usuario: int
+    id_marketplace: int
+    fecha_agregado: datetime
+    marketplace: MarketplaceResponse
+
+    model_config = {"from_attributes": True}
+
+
 class ComprobanteBase(BaseModel):
     id_archivo: int
     id_empleado_evaluador: int

@@ -475,11 +475,78 @@ Estos servicios están disponibles pero son solo para administración backend:
 
 ---
 
+## � FAVORITOS (Wishlist)
+
+### GET `/favoritos/usuario/` - Mis Favoritos (autenticado)
+Obtener lista de productos guardados en favoritos
+```
+Query: ?skip=0&limit=50
+
+Response:
+[
+  {
+    "id": 1,
+    "id_usuario": 1,
+    "id_marketplace": 5,
+    "fecha_agregado": "2026-04-09T14:30:00",
+    "marketplace": {
+      "id": 5,
+      "nombre": "MacBook Pro",
+      "descripcion": "Laptop profesional",
+      "precio": 4500000,
+      "stock": 3,
+      "fecha_publicacion": "2026-04-05T10:00:00",
+      "categoria": { "id": 1, "nombre": "Tecnología" },
+      "empresa": { "id": 1, "nombre": "Acme Corp" },
+      "estado": { "id": 1, "nombre": "ACTIVO" }
+    }
+  }
+]
+```
+
+### GET `/favoritos/usuario/contar/` - Contar Favoritos (autenticado)
+```
+Response:
+{
+  "cantidad": 5
+}
+```
+
+### GET `/favoritos/usuario/verificar/{id_marketplace}` - Verificar si está en Favoritos (autenticado)
+```
+Response:
+{
+  "en_favoritos": true
+}
+```
+
+### POST `/favoritos/` - Agregar a Favoritos (autenticado)
+Agregar un producto a la lista de favoritos
+```json
+Request: ?id_marketplace=5
+
+Response:
+{
+  "id": 1,
+  "id_usuario": 1,
+  "id_marketplace": 5,
+  "fecha_agregado": "2026-04-09T14:30:00"
+}
+```
+
+### DELETE `/favoritos/{id_marketplace}` - Eliminar de Favoritos (autenticado)
+Eliminar un producto de favoritos
+```
+Response: { "message": "Producto eliminado de favoritos" }
+```
+
+---
+
 ## 🚀 PRÓXIMAS MEJORAS SUGERIDAS
 
 1. **Upload de Imágenes**: Agregar endpoints para subir fotos (empresas, marketplace, publicidades)
 2. **Filtro de Rating**: Filtrar empresas por calificación promedio
-3. **Wishlist**: Agregar/eliminar favoritos (requeriría tabla nueva)
+3. ✅ **Wishlist**: Agregar/eliminar favoritos (tabla `usuarios_favoritos` implementada)
 4. **Carrito de Compras**: Funcionalidad e-commerce básica
 5. **Notificaciones**: Sistema de notificaciones en tiempo real (WebSocket)
 6. **Búsqueda Global**: Un endpoint que busque en empresas + marketplace simultáneamente

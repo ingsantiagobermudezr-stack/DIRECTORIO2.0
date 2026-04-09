@@ -9,12 +9,11 @@ async def seed_admin_user(run_sql_statements):
 
     sql_statements = [
         text(f"""
-INSERT INTO usuarios (id, nombre, apellido, correo, telefono, id_rol, id_empresa, password, deleted_at) VALUES
-(1, 'Administrador', 'Sistema', 'admin@admin.com', '', 1, NULL, '{hashed_password}', NULL)
+INSERT INTO usuarios (id, nombre, apellido, correo, id_rol, id_empresa, password, deleted_at) VALUES
+(1, 'Administrador', 'Sistema', 'admin@admin.com', 1, NULL, '{hashed_password}', NULL)
 ON CONFLICT (correo) DO UPDATE SET
     nombre = EXCLUDED.nombre,
     apellido = EXCLUDED.apellido,
-    telefono = EXCLUDED.telefono,
     id_rol = EXCLUDED.id_rol,
     id_empresa = EXCLUDED.id_empresa,
     password = EXCLUDED.password,
