@@ -132,21 +132,47 @@ class Empresa(Base):
     marketplaces = relationship("Marketplace", back_populates="empresa", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
+
+# Tabla catálogo de tipos de anuncio para publicidades
+class TipoAnuncio(Base):
+    __tablename__ = 'tipos_anuncio'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(50), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    publicidades = relationship("Publicidad", back_populates="tipo_anuncio")
+
+
 # Modelo de Publicidad para gestionar anuncios de empresas
 class Publicidad(Base):
     __tablename__ = 'publicidades'
 
     id = Column(Integer, primary_key=True, index=True)
     id_empresa = Column(Integer, ForeignKey('empresas.id'), nullable=False)
-    tipo_anuncio = Column(String(50), nullable=False)
+    id_tipo_anuncio = Column(Integer, ForeignKey('tipos_anuncio.id'), nullable=False)
     descripcion = Column(Text)
-    duracion = Column(Integer)
     fecha_inicio = Column(DateTime, default=datetime.utcnow)
     fecha_fin = Column(DateTime)
 
     # Relación con Empresa
     empresa = relationship("Empresa", back_populates="publicidades")
+    tipo_anuncio = relationship("TipoAnuncio", back_populates="publicidades")
+    imagenes = relationship("ImagenPublicidad", back_populates="publicidad", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
+
+
+# Tabla de imágenes para permitir múltiples imágenes por publicidad
+class ImagenPublicidad(Base):
+    __tablename__ = 'imagenes_publicidad'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_publicidad = Column(Integer, ForeignKey('publicidades.id'), nullable=False)
+    imagen_url = Column(String(255), nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+
+    publicidad = relationship("Publicidad", back_populates="imagenes")
 
 
 # Tabla catálogo para estados de publicación en marketplace
@@ -161,20 +187,33 @@ class EstadoMarketplace(Base):
     marketplaces = relationship("Marketplace", back_populates="estado")
 
 
+# Tabla de imágenes para permitir múltiples imágenes por publicación
+class ImagenMarketplace(Base):
+    __tablename__ = 'imagenes_marketplace'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_marketplace = Column(Integer, ForeignKey('marketplaces.id'), nullable=False)
+    imagen_url = Column(String(255), nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+
+    marketplace = relationship("Marketplace", back_populates="imagenes")
+
+
 # Modelo para Marketplace (productos/servicios publicados por empresas)
 class Marketplace(Base):
     __tablename__ = 'marketplaces'
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100), nullable=False)
-    descripcion = Column(Text, nullable=True)
-    precio = Column(Float, nullable=True)
-    imagen_url = Column(String(255), nullable=True)
+    nombre = Column(String(100))
+    descripcion = Column(Text)
+    precio = Column(Float)
+    stock = Column(Float)
     fecha_publicacion = Column(DateTime, default=datetime.utcnow)
     id_estado = Column(Integer, ForeignKey('estados_marketplace.id'), nullable=True)
     id_empresa = Column(Integer, ForeignKey('empresas.id'), nullable=False)
     id_categoria = Column(Integer, ForeignKey('categorias.id'), nullable=True)
 
+    imagenes = relationship("ImagenMarketplace", back_populates="marketplace")
     estado = relationship("EstadoMarketplace", back_populates="marketplaces")
     empresa = relationship("Empresa", back_populates="marketplaces")
     categoria = relationship("Categoria", back_populates="marketplaces")
