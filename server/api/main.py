@@ -11,7 +11,7 @@ import logging
 from fastapi.middleware.cors import CORSMiddleware
 from importlib import import_module
 from starlette.middleware.base import BaseHTTPMiddleware
-from contextlib import asynccontextmanager
+from api.db.conexion import lifespan
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -22,51 +22,6 @@ class LogMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         logger.info("Response status: %s", response.status_code)
         return response
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: crear tablas y seed mínimo
-    try:
-        from api.db.conexion import get_engine, Base
-        from sqlalchemy.orm import sessionmaker
-
-        logger.info("Creando tablas (si no existen) en la base de datos")
-        engine = get_engine()
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        logger.exception("Error al inicializar la base de datos: %s", e)
-
-    # Seed básico para tests locales: asegurar que existan categorías (1..4)
-    try:
-        from api.models.models import Categoria, Departamento, Municipio
-
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        db = SessionLocal()
-        try:
-            for cid in range(1, 5):
-                exists = db.query(Categoria).filter(Categoria.id_categoria == cid).first()
-                if not exists:
-                    db.add(Categoria(id_categoria=cid, nombre=f"Categoria {cid}", descripcion="Seed"))
-
-            dep = db.query(Departamento).filter(Departamento.id_departamento == 1).first()
-            if not dep:
-                dep = Departamento(id_departamento=1, nombre="Departamento Seed")
-                db.add(dep)
-
-            mun = db.query(Municipio).filter(Municipio.id_municipio == 1).first()
-            if not mun:
-                db.add(Municipio(id_municipio=1, nombre="Municipio Seed", id_departamento=1))
-
-            db.commit()
-            logger.info("Seed inicial insertado (categorias y municipio)")
-        finally:
-            db.close()
-    except Exception as e:
-        logger.exception("Error insertando seed inicial: %s", e)
-
-    yield
-
 
 app = FastAPI(title="Directorio API", description="API del Sistema de Directorio Empresarial", version="1.0.0", lifespan=lifespan)
 
