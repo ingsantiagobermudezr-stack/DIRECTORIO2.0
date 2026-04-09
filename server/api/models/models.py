@@ -5,17 +5,17 @@ from api.db.conexion import Base
 
 # Asociación many-to-many entre roles y permisos
 role_permiso = Table(
-    'role_permiso', Base.metadata,
-    Column('id_rol', Integer, ForeignKey('rol.id_rol', ondelete='CASCADE')),
-    Column('id_permiso', Integer, ForeignKey('permiso.id_permiso', ondelete='CASCADE'))
+    'roles_permisos', Base.metadata,
+    Column('id_rol', Integer, ForeignKey('roles.id')),
+    Column('id_permiso', Integer, ForeignKey('permisos.id'))
 )
 
 
 # Modelo para País
 class Pais(Base):
-    __tablename__ = 'pais'
+    __tablename__ = 'paises'
 
-    id_pais = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     codigo_iso = Column(String(10), nullable=True)
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
@@ -25,9 +25,9 @@ class Pais(Base):
 
 # Modelo de Categoría para clasificar empresas por tipo o sector de servicio
 class Categoria(Base):
-    __tablename__ = 'categoria'
+    __tablename__ = 'categorias'
 
-    id_categoria = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     descripcion = Column(Text, nullable=True)
 
@@ -39,9 +39,9 @@ class Categoria(Base):
 
 # Modelo de Roles y Permisos
 class Rol(Base):
-    __tablename__ = 'rol'
+    __tablename__ = 'roles'
 
-    id_rol = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(50), nullable=False, unique=True)
     descripcion = Column(Text, nullable=True)
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
@@ -51,9 +51,9 @@ class Rol(Base):
 
 
 class Permiso(Base):
-    __tablename__ = 'permiso'
+    __tablename__ = 'permisos'
 
-    id_permiso = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False, unique=True)
     descripcion = Column(Text, nullable=True)
 
@@ -63,38 +63,27 @@ class Permiso(Base):
 
 # Modelo de Departamento para agrupar municipios
 class Departamento(Base):
-    __tablename__ = 'departamento'
+    __tablename__ = 'departamentos'
 
-    id_departamento = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    id_pais = Column(Integer, ForeignKey('paises.id'), nullable=True)
     nombre = Column(String(100), nullable=False)
-    id_pais = Column(Integer, ForeignKey('pais.id_pais', ondelete="SET NULL"), nullable=True)
+    codigo_iso = Column(String(10), nullable=True)
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
     # Relación inversa con Municipio y Ciudad
     municipios = relationship("Municipio", back_populates="departamento", cascade="all, delete-orphan")
     ciudades = relationship("Ciudad", back_populates="departamento", cascade="all, delete-orphan")
     pais = relationship("Pais", back_populates="departamentos")
-    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
-
-
-# Modelo para Ciudad (complementario a Municipio si se necesita)
-class Ciudad(Base):
-    __tablename__ = 'ciudad'
-
-    id_ciudad = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100), nullable=False)
-    id_departamento = Column(Integer, ForeignKey('departamento.id_departamento', ondelete="CASCADE"))
-
-    departamento = relationship("Departamento", back_populates="ciudades")
-    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
-
 
 # Modelo de Municipio para organización geográfica
 class Municipio(Base):
-    __tablename__ = 'municipio'
+    __tablename__ = 'municipios'
 
-    id_municipio = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
-    id_departamento = Column(Integer, ForeignKey('departamento.id_departamento', ondelete="CASCADE"))
+    codigo_iso = Column(String(10), nullable=True)
+    id_departamento = Column(Integer, ForeignKey('departamentos.id'))
 
     # Relaciones con Departamento y Empresa
     departamento = relationship("Departamento", back_populates="municipios")
@@ -104,16 +93,14 @@ class Municipio(Base):
 
 # Modelo para Usuario, representando un usuario del sistema con información de autenticación
 class Usuario(Base):
-    __tablename__ = 'usuario'
+    __tablename__ = 'usuarios'
 
-    id_usuario = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     apellido = Column(String(100), nullable=False)
     correo = Column(String(100), unique=True, nullable=False)
     telefono = Column(String(20), nullable=True)
-    # Campo legible (compatibilidad) y FK hacia `rol` normalizado
-    rol = Column(String(20), default='user')
-    id_rol = Column(Integer, ForeignKey('rol.id_rol', ondelete='SET NULL'), nullable=True)
+    id_rol = Column(Integer, ForeignKey('roles.id'), nullable=True)
     rol_obj = relationship('Rol', back_populates='usuarios')
     password = Column(String(255), nullable=False)
 
@@ -125,16 +112,16 @@ class Usuario(Base):
 
 # Modelo de Empresa, con datos básicos y relaciones
 class Empresa(Base):
-    __tablename__ = 'empresa'
+    __tablename__ = 'empresas'
 
-    id_empresa = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     nit = Column(String(50), unique=True, nullable=False)
     correo = Column(String(100))
     direccion = Column(String(255))
     telefono = Column(String(20))
-    id_categoria = Column(Integer, ForeignKey('categoria.id_categoria', ondelete="SET NULL"))
-    id_municipio = Column(Integer, ForeignKey('municipio.id_municipio', ondelete="SET NULL"))
+    id_categoria = Column(Integer, ForeignKey('categorias.id'))
+    id_municipio = Column(Integer, ForeignKey('municipios.id'))
     logo = Column(String(255), nullable=True)
 
     # Relaciones con otros modelos
@@ -145,44 +132,12 @@ class Empresa(Base):
     marketplaces = relationship("Marketplace", back_populates="empresa", cascade="all, delete-orphan")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
-# Modelo de Auditoría
-class Auditoria(Base):
-    __tablename__ = 'auditoria'
-
-    id_auditoria = Column(Integer, primary_key=True, index=True)
-    tabla = Column(String(100), nullable=False)
-    operacion = Column(String(50), nullable=False)
-    id_registro = Column(Integer, nullable=True)
-    id_usuario = Column(Integer, ForeignKey('usuario.id_usuario', ondelete='SET NULL'), nullable=True)
-    descripcion = Column(Text, nullable=True)
-    fecha = Column(DateTime, default=datetime.utcnow)
-    usuario = relationship('Usuario', backref='auditorias')
-    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
-
-
-# Modelo para Productos (catálogo general distinto de marketplace)
-class Producto(Base):
-    __tablename__ = 'producto'
-
-    id_producto = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(150), nullable=False)
-    descripcion = Column(Text, nullable=True)
-    precio = Column(Float, nullable=True)
-    stock = Column(Integer, default=0)
-    sku = Column(String(100), nullable=True)
-    id_empresa = Column(Integer, ForeignKey('empresa.id_empresa', ondelete='SET NULL'), nullable=True)
-    fecha_creacion = Column(DateTime, default=datetime.utcnow)
-
-    empresa = relationship('Empresa')
-    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
-
-
 # Modelo de Publicidad para gestionar anuncios de empresas
 class Publicidad(Base):
-    __tablename__ = 'publicidad'
+    __tablename__ = 'publicidades'
 
-    id_publicidad = Column(Integer, primary_key=True, index=True)
-    id_empresa = Column(Integer, ForeignKey('empresa.id_empresa', ondelete="CASCADE"), nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    id_empresa = Column(Integer, ForeignKey('empresas.id'), nullable=False)
     tipo_anuncio = Column(String(50), nullable=False)
     descripcion = Column(Text)
     duracion = Column(Integer)
@@ -196,17 +151,17 @@ class Publicidad(Base):
 
 # Modelo para Marketplace (productos/servicios publicados por empresas)
 class Marketplace(Base):
-    __tablename__ = 'marketplace'
+    __tablename__ = 'marketplaces'
 
-    id_marketplace = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     descripcion = Column(Text, nullable=True)
     precio = Column(Float, nullable=True)
     imagen_url = Column(String(255), nullable=True)
     fecha_publicacion = Column(DateTime, default=datetime.utcnow)
     estado = Column(String(20), default='activo')
-    id_empresa = Column(Integer, ForeignKey('empresa.id_empresa', ondelete="CASCADE"), nullable=False)
-    id_categoria = Column(Integer, ForeignKey('categoria.id_categoria', ondelete="SET NULL"), nullable=True)
+    id_empresa = Column(Integer, ForeignKey('empresas.id'), nullable=False)
+    id_categoria = Column(Integer, ForeignKey('categorias.id'), nullable=True)
 
     empresa = relationship("Empresa", back_populates="marketplaces")
     categoria = relationship("Categoria", back_populates="marketplaces")
@@ -215,11 +170,11 @@ class Marketplace(Base):
 
 # Modelo para Review, que permite valoraciones y comentarios de usuarios sobre las empresas
 class Review(Base):
-    __tablename__ = 'review'
+    __tablename__ = 'reviews'
 
-    id_review = Column(Integer, primary_key=True, index=True)
-    id_empresa = Column(Integer, ForeignKey('empresa.id_empresa', ondelete="CASCADE"))
-    id_usuario = Column(Integer, ForeignKey('usuario.id_usuario', ondelete="CASCADE"))
+    id = Column(Integer, primary_key=True, index=True)
+    id_empresa = Column(Integer, ForeignKey('empresas.id'))
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'))
     comentario = Column(Text, nullable=True)
     calificacion = Column(Float, nullable=False)
     fecha = Column(DateTime, default=datetime.utcnow)
@@ -232,10 +187,10 @@ class Review(Base):
 
 # Modelo para Resultado, que almacena el historial de búsqueda de cada usuario
 class Resultado(Base):
-    __tablename__ = 'resultado'
+    __tablename__ = 'resultados'
 
-    id_resultado = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey('usuario.id_usuario', ondelete="CASCADE"))
+    id = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'))
     criterio = Column(String(255), nullable=False)
     fecha_hora = Column(DateTime, default=datetime.utcnow)
 

@@ -25,7 +25,7 @@ class LogMiddleware(BaseHTTPMiddleware):
 
 app = FastAPI(title="Directorio API", description="API del Sistema de Directorio Empresarial", version="1.0.0", lifespan=lifespan)
 
-origins = ["http://localhost", "http://localhost:4321", "https://paginas-amarillas.vercel.app/"]
+origins = ["*"]  # Permitir todas las fuentes; ajustar en producción para mayor seguridad
 
 app.add_middleware(
     CORSMiddleware,
