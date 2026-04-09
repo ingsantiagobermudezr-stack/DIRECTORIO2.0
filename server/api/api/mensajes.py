@@ -7,11 +7,22 @@ from sqlalchemy.orm import joinedload
 from api.db.conexion import get_db
 from api.models.models import Mensaje, Marketplace
 from api.schemas.schemas import MensajeCreate, MensajeResponse
-from api.api.auth import can_view_deleted_records, require_permission
+from api.api.auth import can_view_deleted_records, require_permission, get_current_user
 from api.api.notificaciones import create_business_notification
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
+
+
+def _is_admin(user) -> bool:
+    return getattr(user, "id", None) == 1
+
+
+def _assert_mensaje_owner_or_admin(user, mensaje: Mensaje) -> None:
+    if _is_admin(user):
+        return
+    if mensaje.id_usuario_enviador_mensaje != user.id:
+        raise HTTPException(status_code=403, detail="Solo el autor puede modificar este mensaje")
 
 
 @router.post("/mensajes/", response_model=MensajeResponse, status_code=201)
@@ -20,6 +31,9 @@ async def create_mensaje(
     current_user = Depends(require_permission(Permisos.CREAR_MENSAJES)),
     db: AsyncSession = Depends(get_db)
 ):
+    if not _is_admin(current_user) and payload.id_usuario_enviador_mensaje != current_user.id:
+        raise HTTPException(status_code=403, detail="No puedes crear mensajes en nombre de otro usuario")
+
     db_item = Mensaje(**payload.model_dump())
     db.add(db_item)
     await db.commit()
@@ -95,6 +109,17 @@ async def update_mensaje(
     if not db_item:
         raise HTTPException(status_code=404, detail="Mensaje no encontrado")
 
+    _assert_mensaje_owner_or_admin(current_user, db_item)
+
+    if not _is_admin(current_user):
+        # Evita que el autor cambie participantes/chat para escalar acceso por IDOR.
+        if payload.id_usuario_enviador_mensaje != db_item.id_usuario_enviador_mensaje:
+            raise HTTPException(status_code=403, detail="No puedes cambiar el remitente del mensaje")
+        if payload.id_usuario_creador_chat != db_item.id_usuario_creador_chat:
+            raise HTTPException(status_code=403, detail="No puedes cambiar el creador del chat")
+        if payload.id_marketplace != db_item.id_marketplace:
+            raise HTTPException(status_code=403, detail="No puedes mover el mensaje a otro marketplace")
+
     for key, value in payload.model_dump().items():
         setattr(db_item, key, value)
 
@@ -104,11 +129,18 @@ async def update_mensaje(
 
 
 @router.delete("/mensajes/{mensaje_id}")
-async def delete_mensaje(mensaje_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_mensaje(
+    mensaje_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Mensaje).where(Mensaje.id == mensaje_id))
     db_item = result.scalars().first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Mensaje no encontrado")
+
+    if not _is_admin(current_user) and db_item.id_usuario_enviador_mensaje != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo el autor puede eliminar este mensaje")
 
     db_item.deleted_at = datetime.utcnow()
     await db.commit()

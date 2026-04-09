@@ -209,11 +209,8 @@ async def can_view_deleted_records(current_user: Optional[models.Usuario] = Depe
 
 
 async def require_admin(current_user: models.Usuario = Depends(get_current_user)):
-    # Permitimos administrador por nombre de rol legacy o por relación normalizada
-    if getattr(current_user, 'rol', None) == 'admin':
-        return current_user
-    rol_nombre, _ = _extract_auth_context(current_user)
-    if rol_nombre == 'admin':
+    # Regla hardcodeada solicitada: solo el usuario con ID=1 es admin.
+    if getattr(current_user, "id", None) == 1:
         return current_user
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Se requieren privilegios de administrador")
 

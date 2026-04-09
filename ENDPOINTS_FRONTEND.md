@@ -216,6 +216,9 @@ Request: { ...campos a actualizar }
 Response: { empresa...actualizada }
 ```
 
+Regla de ownership:
+- Solo el creador de la empresa o admin puede editarla.
+
 ### POST `/empresas/{empresa_id}/logo/upload` - Subir Logo ⚠️ Requiere `modificar_empresas`
 Subir logo de empresa (multipart/form-data)
 ```
@@ -229,11 +232,17 @@ Response:
 }
 ```
 
+Regla de ownership:
+- Solo el creador de la empresa o admin puede actualizar el logo.
+
 ### DELETE `/empresas/{empresa_id}` - Eliminar Empresa ⚠️ Requiere `modificar_empresas`
 Soft delete (marca deleted_at)
 ```
 Response: { "message": "Empresa desactivada correctamente" }
 ```
+
+Regla de ownership:
+- Solo el creador de la empresa o admin puede eliminarla.
 
 ---
 
@@ -300,6 +309,9 @@ Reglas de integridad:
 - `stock < 0` => `400 Bad Request`
 - Si `stock = 0`, el backend fuerza `id_estado` a `SIN STOCK` o `INACTIVO` (si existe en catálogo).
 
+Regla de ownership:
+- Solo el propietario de la empresa (o admin) puede crear productos para esa empresa.
+
 ### PUT `/marketplace/{id_marketplace}` - Editar Producto ⚠️ Requiere `modificar_marketplace`
 ```
 Response: { producto...actualizado }
@@ -310,6 +322,9 @@ Reglas de integridad:
 - Si `stock = 0`, el backend fuerza `id_estado` a `SIN STOCK` o `INACTIVO`.
 - Si el producto está eliminado (`deleted_at`), no permite editar `precio` ni `stock` (`409 Conflict`).
 - Si cambia `precio`, se generan notificaciones automáticas para usuarios que tengan el producto en favoritos.
+
+Regla de ownership:
+- Solo el propietario de la empresa del producto (o admin) puede editar.
 
 ### POST `/marketplace/{id_marketplace}/imagenes/upload` - Subir Imágenes ⚠️ Requiere `modificar_marketplace`
 Subir una o múltiples imágenes de producto (multipart/form-data)
@@ -327,10 +342,16 @@ Response:
 }
 ```
 
+Regla de ownership:
+- Solo el propietario de la empresa del producto (o admin) puede subir imágenes.
+
 ### DELETE `/marketplace/{id_marketplace}` - Eliminar Producto ⚠️ Requiere `modificar_marketplace`
 ```
 Response: { "detail": "Marketplace item deactivated" }
 ```
+
+Regla de ownership:
+- Solo el propietario de la empresa del producto (o admin) puede eliminar.
 
 ---
 
@@ -420,6 +441,9 @@ Request:
 Response: { mensaje...creado }
 ```
 
+Regla de ownership:
+- Solo el usuario autenticado (o admin) puede enviar mensajes con su propio `id_usuario_enviador_mensaje`.
+
 Evento automático:
 - Crea notificación `new_message` para el vendedor propietario de la empresa del producto.
 
@@ -428,10 +452,17 @@ Evento automático:
 Response: { mensaje...actualizado }
 ```
 
+Regla de ownership:
+- Solo el autor del mensaje (o admin) puede editar.
+- El autor no puede cambiar `id_marketplace`, `id_usuario_creador_chat` ni `id_usuario_enviador_mensaje`.
+
 ### DELETE `/mensajes/{mensaje_id}` - Eliminar Mensaje
 ```
 Response: { "detail": "Mensaje desactivado" }
 ```
+
+Regla de ownership:
+- Solo el autor del mensaje (o admin) puede eliminar.
 
 ### POST `/archivos-mensajes/upload` - Subir Archivo de Mensaje
 Subir imagen asociada a un mensaje (multipart/form-data)
@@ -445,6 +476,9 @@ Response:
   "url_imagen": "/uploads/mensajes/abc123.jpg"
 }
 ```
+
+Regla de ownership:
+- Solo participantes del chat (creador o remitente del mensaje) o admin pueden adjuntar/editar/eliminar/restaurar archivos del mensaje.
 
 ### POST `/comprobantes/registrar-desde-archivo` - Registrar Comprobante con Archivo
 Sube archivo del comprobante y crea el comprobante en una sola operación

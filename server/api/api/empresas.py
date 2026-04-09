@@ -15,6 +15,17 @@ from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
+
+def _is_admin(user) -> bool:
+    return getattr(user, "id", None) == 1
+
+
+def _assert_empresa_owner_or_admin(user, empresa: Empresa) -> None:
+    if _is_admin(user):
+        return
+    if empresa.id_usuario_creador != user.id:
+        raise HTTPException(status_code=403, detail="Solo el creador o admin puede modificar esta empresa")
+
 # Crear empresa
 @router.post("/empresas/", response_model=EmpresaResponse, status_code=201)
 async def create_empresa(
@@ -182,6 +193,9 @@ async def update_empresa(
     db_empresa = result.scalars().first()
     if not db_empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    _assert_empresa_owner_or_admin(current_user, db_empresa)
+
     for key, value in empresa.model_dump().items():
         setattr(db_empresa, key, value)
     await db.commit()
@@ -195,11 +209,18 @@ async def update_empresa(
 
 # Eliminar una empresa
 @router.delete("/empresas/{empresa_id}")
-async def delete_empresa(empresa_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_empresa(
+    empresa_id: int,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_EMPRESAS)),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Empresa).where(Empresa.id == empresa_id))
     empresa = result.scalars().first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    _assert_empresa_owner_or_admin(current_user, empresa)
+
     empresa.deleted_at = datetime.utcnow()
     await db.commit()
     return {"message": "Empresa desactivada correctamente"}
@@ -225,7 +246,7 @@ async def restore_empresa(
 async def upload_logo_empresa(
     empresa_id: int,
     archivo: UploadFile = File(...),
-    _: object = Depends(require_permission(Permisos.MODIFICAR_EMPRESAS)),
+    current_user = Depends(require_permission(Permisos.MODIFICAR_EMPRESAS)),
     db: AsyncSession = Depends(get_db),
 ):
     """Sube logo de empresa y actualiza `logo_url`."""
@@ -233,6 +254,8 @@ async def upload_logo_empresa(
     empresa = result.scalars().first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    _assert_empresa_owner_or_admin(current_user, empresa)
 
     upload_dir = ensure_upload_dir(get_upload_root(), "empresas")
     file_name = await save_upload_file(archivo, upload_dir)

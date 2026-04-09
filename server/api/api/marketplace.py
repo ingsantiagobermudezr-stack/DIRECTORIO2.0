@@ -17,6 +17,34 @@ from seeders.seed_permisos import Permisos
 router = APIRouter()
 
 
+def _is_admin(user) -> bool:
+    return getattr(user, "id", None) == 1
+
+
+async def _assert_marketplace_owner_or_admin(db: AsyncSession, user, marketplace: Marketplace) -> None:
+    if _is_admin(user):
+        return
+
+    empresa_result = await db.execute(
+        select(Empresa).where(Empresa.id == marketplace.id_empresa, Empresa.deleted_at.is_(None))
+    )
+    empresa = empresa_result.scalars().first()
+    if not empresa or empresa.id_usuario_creador != user.id:
+        raise HTTPException(status_code=403, detail="Solo el propietario de la empresa puede modificar este producto")
+
+
+async def _assert_empresa_owner_or_admin(db: AsyncSession, user, id_empresa: int) -> None:
+    if _is_admin(user):
+        return
+
+    empresa_result = await db.execute(
+        select(Empresa).where(Empresa.id == id_empresa, Empresa.deleted_at.is_(None))
+    )
+    empresa = empresa_result.scalars().first()
+    if not empresa or empresa.id_usuario_creador != user.id:
+        raise HTTPException(status_code=403, detail="Solo el propietario de la empresa puede publicar productos")
+
+
 async def _resolve_estado_stock_cero(db: AsyncSession) -> Optional[int]:
     """Busca el estado para stock=0 priorizando 'sin stock' y luego 'inactivo'."""
     query = select(EstadoMarketplace).where(
@@ -157,6 +185,8 @@ async def create_marketplace(
     current_user = Depends(require_permission(Permisos.CREAR_MARKETPLACE)),
     db: AsyncSession = Depends(get_db)
 ):
+    await _assert_empresa_owner_or_admin(db, current_user, item.id_empresa)
+
     if item.stock is not None and item.stock < 0:
         raise HTTPException(status_code=400, detail="No se permite stock negativo")
 
@@ -184,6 +214,8 @@ async def update_marketplace(
     db_item = result.scalars().first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Marketplace item not found")
+
+    await _assert_marketplace_owner_or_admin(db, current_user, db_item)
 
     if item.stock is not None and item.stock < 0:
         raise HTTPException(status_code=400, detail="No se permite stock negativo")
@@ -247,6 +279,9 @@ async def delete_marketplace(
     db_item = result.scalars().first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Marketplace item not found")
+
+    await _assert_marketplace_owner_or_admin(db, current_user, db_item)
+
     db_item.deleted_at = datetime.utcnow()
     await db.commit()
     return {"detail": "Marketplace item deactivated"}
@@ -272,7 +307,7 @@ async def restore_marketplace(
 async def upload_marketplace_images(
     id_marketplace: int,
     archivos: list[UploadFile] = File(...),
-    _: object = Depends(require_permission(Permisos.MODIFICAR_MARKETPLACE)),
+    current_user = Depends(require_permission(Permisos.MODIFICAR_MARKETPLACE)),
     db: AsyncSession = Depends(get_db),
 ):
     """Sube una o varias imágenes para un producto de marketplace."""
@@ -285,6 +320,8 @@ async def upload_marketplace_images(
     item = result.scalars().first()
     if not item:
         raise HTTPException(status_code=404, detail="Marketplace item not found")
+
+    await _assert_marketplace_owner_or_admin(db, current_user, item)
 
     upload_dir = ensure_upload_dir(get_upload_root(), "marketplace")
     uploaded_urls: list[str] = []
