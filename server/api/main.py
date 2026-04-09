@@ -11,6 +11,10 @@ import logging
 from fastapi.middleware.cors import CORSMiddleware
 from importlib import import_module
 from starlette.middleware.base import BaseHTTPMiddleware
+from api.utils.logging_setup import configure_daily_logging
+
+configure_daily_logging()
+
 from api.db.conexion import lifespan
 
 logger = logging.getLogger("uvicorn.error")
