@@ -15,7 +15,11 @@ router = APIRouter()
 
 # Crear empresa
 @router.post("/empresas/", response_model=EmpresaResponse, status_code=201)
-async def create_empresa(empresa: EmpresaCreate, db: AsyncSession = Depends(get_db)):
+async def create_empresa(
+    empresa: EmpresaCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_EMPRESA)),
+    db: AsyncSession = Depends(get_db)
+):
     try:
         # Verificar unicidad de NIT
         nit_result = await db.execute(select(Empresa).where(Empresa.nit == empresa.nit))
@@ -98,7 +102,12 @@ async def read_empresa(
 
 # Actualizar una empresa
 @router.put("/empresas/{empresa_id}", response_model=EmpresaResponseGet)
-async def update_empresa(empresa_id: int, empresa: EmpresaCreate, db: AsyncSession = Depends(get_db)):
+async def update_empresa(
+    empresa_id: int,
+    empresa: EmpresaCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_EMPRESAS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Empresa).where(Empresa.id == empresa_id))
     db_empresa = result.scalars().first()
     if not db_empresa:

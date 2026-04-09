@@ -13,7 +13,11 @@ router = APIRouter()
 
 
 @router.post("/mensajes/", response_model=MensajeResponse, status_code=201)
-async def create_mensaje(payload: MensajeCreate, db: AsyncSession = Depends(get_db)):
+async def create_mensaje(
+    payload: MensajeCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_MENSAJES)),
+    db: AsyncSession = Depends(get_db)
+):
     db_item = Mensaje(**payload.model_dump())
     db.add(db_item)
     await db.commit()
@@ -56,7 +60,12 @@ async def get_mensaje(
 
 
 @router.put("/mensajes/{mensaje_id}", response_model=MensajeResponse)
-async def update_mensaje(mensaje_id: int, payload: MensajeCreate, db: AsyncSession = Depends(get_db)):
+async def update_mensaje(
+    mensaje_id: int,
+    payload: MensajeCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_MENSAJES)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Mensaje).where(Mensaje.id == mensaje_id))
     db_item = result.scalars().first()
     if not db_item:

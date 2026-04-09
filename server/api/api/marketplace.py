@@ -43,7 +43,11 @@ async def get_marketplace_item(
 
 # Crear producto/servicio
 @router.post("/marketplace", response_model=MarketplaceResponse, status_code=201)
-async def create_marketplace(item: MarketplaceCreate, db: AsyncSession = Depends(get_db)):
+async def create_marketplace(
+    item: MarketplaceCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_MARKETPLACE)),
+    db: AsyncSession = Depends(get_db)
+):
     db_item = Marketplace(**item.model_dump())
     db.add(db_item)
     await db.commit()
@@ -52,7 +56,12 @@ async def create_marketplace(item: MarketplaceCreate, db: AsyncSession = Depends
 
 # Editar producto/servicio
 @router.put("/marketplace/{id_marketplace}", response_model=MarketplaceResponse)
-async def update_marketplace(id_marketplace: int, item: MarketplaceCreate, db: AsyncSession = Depends(get_db)):
+async def update_marketplace(
+    id_marketplace: int,
+    item: MarketplaceCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_MARKETPLACE)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Marketplace).where(Marketplace.id == id_marketplace))
     db_item = result.scalars().first()
     if not db_item:

@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.db.conexion import get_db
 from api.models.models import Pais, Departamento, Municipio
 from api.schemas.schemas import PaisResponse, PaisBase, MunicipioResponse
-from api.api.auth import can_view_deleted_records
+from api.api.auth import can_view_deleted_records, require_permission
+from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
@@ -25,9 +26,32 @@ async def list_paises(
 
 
 @router.post("/paises", response_model=PaisResponse, status_code=201)
-async def create_pais(payload: PaisBase, db: AsyncSession = Depends(get_db)):
+async def create_pais(
+    payload: PaisBase,
+    current_user = Depends(require_permission(Permisos.CREAR_PAISES)),
+    db: AsyncSession = Depends(get_db)
+):
     db_p = Pais(nombre=payload.nombre, codigo_iso=payload.codigo_iso)
     db.add(db_p)
+    await db.commit()
+    await db.refresh(db_p)
+    return db_p
+
+
+@router.put("/paises/{pais_id}", response_model=PaisResponse)
+async def update_pais(
+    pais_id: int,
+    payload: PaisBase,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_PAISES)),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Pais).where(Pais.id == pais_id))
+    db_p = result.scalars().first()
+    if not db_p:
+        raise HTTPException(status_code=404, detail="País no encontrado")
+    
+    db_p.nombre = payload.nombre
+    db_p.codigo_iso = payload.codigo_iso
     await db.commit()
     await db.refresh(db_p)
     return db_p

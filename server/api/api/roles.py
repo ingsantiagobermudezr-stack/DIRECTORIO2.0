@@ -28,7 +28,11 @@ async def list_roles(
 
 
 @router.post("/roles", response_model=RolResponse, status_code=201)
-async def create_role(payload: RolCreate, db: AsyncSession = Depends(get_db)):
+async def create_role(
+    payload: RolCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_ROLES)),
+    db: AsyncSession = Depends(get_db)
+):
     db_role = Rol(nombre=payload.nombre, descripcion=payload.descripcion)
     if payload.permiso_ids:
         permisos_result = await db.execute(select(Permiso).where(Permiso.id.in_(payload.permiso_ids)))
@@ -57,7 +61,12 @@ async def get_role(
 
 
 @router.put("/roles/{id_rol}", response_model=RolResponse)
-async def update_role(id_rol: int, payload: RolCreate, db: AsyncSession = Depends(get_db)):
+async def update_role(
+    id_rol: int,
+    payload: RolCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_ROLES)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Rol).options(selectinload(Rol.permisos)).where(Rol.id == id_rol))
     role = result.scalars().first()
     if not role:

@@ -3,6 +3,7 @@ from enum import Enum
 class Roles(Enum):
     ADMIN = 1 # ID 
     USUARIO = 2 # ID
+    EMPRESA = 3 # ID
 
 USER_ROLES = {
   Roles.ADMIN: {
@@ -12,6 +13,10 @@ USER_ROLES = {
   Roles.USUARIO: {
     'nombre': 'usuario',
     'descripcion': 'Usuario',
+  },
+  Roles.EMPRESA: {
+    'nombre': 'empresa',
+    'descripcion': 'Representante de empresa',
   }
 }
 

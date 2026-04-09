@@ -20,7 +20,11 @@ router = APIRouter()
     description="Crea una nueva categoría en el sistema",
     response_description="La categoría creada",
 )
-async def create_categoria(categoria: CategoriaCreate, db: AsyncSession = Depends(get_db)):
+async def create_categoria(
+    categoria: CategoriaCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_CATEGORIAS)),
+    db: AsyncSession = Depends(get_db)
+):
     db_categoria = Categoria(**categoria.model_dump())
     db.add(db_categoria)
     await db.commit()
@@ -65,7 +69,12 @@ async def read_categoria(
 
 
 @router.put("/categorias/{categoria_id}", response_model=CategoriaResponse)
-async def update_categoria(categoria_id: int, categoria: CategoriaCreate, db: AsyncSession = Depends(get_db)):
+async def update_categoria(
+    categoria_id: int,
+    categoria: CategoriaCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_CATEGORIAS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Categoria).where(Categoria.id == categoria_id))
     db_categoria = result.scalars().first()
     if not db_categoria:

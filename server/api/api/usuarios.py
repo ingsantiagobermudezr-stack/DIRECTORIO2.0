@@ -17,7 +17,11 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 @router.post("/usuarios/", response_model=UsuarioResponse, status_code=201)
-async def create_usuario(usuario: UsuarioCreate, db: AsyncSession = Depends(get_db)):
+async def create_usuario(
+    usuario: UsuarioCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_USUARIOS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Usuario).where(Usuario.correo == usuario.correo))
     existing_user = result.scalars().first()
     if existing_user:
@@ -70,7 +74,12 @@ async def read_usuario(
 
 
 @router.put("/usuarios/{usuario_id}", response_model=UsuarioResponse)
-async def update_usuario(usuario_id: int, usuario: UsuarioUpdate, db: AsyncSession = Depends(get_db)):
+async def update_usuario(
+    usuario_id: int,
+    usuario: UsuarioUpdate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_USUARIOS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
     db_usuario = result.scalars().first()
     if not db_usuario:

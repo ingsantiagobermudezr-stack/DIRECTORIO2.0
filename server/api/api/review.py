@@ -14,7 +14,11 @@ router = APIRouter()
 
 # RUTAS PARA REVIEW
 @router.post("/reviews/", response_model=ReviewResponseCreate)
-async def create_review(review: ReviewCreate, db: AsyncSession = Depends(get_db)):
+async def create_review(
+    review: ReviewCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_REVIEWS)),
+    db: AsyncSession = Depends(get_db)
+):
     db_review = Review(**review.model_dump())
     db.add(db_review)
     await db.commit()
@@ -54,7 +58,12 @@ async def read_review(
     return review
 
 @router.put("/reviews/{review_id}", response_model=ReviewResponse)
-async def update_review(review_id: int, review: ReviewCreate, db: AsyncSession = Depends(get_db)):
+async def update_review(
+    review_id: int,
+    review: ReviewCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_REVIEWS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Review).where(Review.id == review_id))
     db_review = result.scalars().first()
     if not db_review:

@@ -14,7 +14,11 @@ router = APIRouter()
 
 
 @router.post("/municipios/", response_model=MunicipioResponse)
-async def create_municipio(municipio: MunicipioCreate, db: AsyncSession = Depends(get_db)):
+async def create_municipio(
+    municipio: MunicipioCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_MUNICIPIOS)),
+    db: AsyncSession = Depends(get_db)
+):
     db_municipio = Municipio(**municipio.model_dump())
     db.add(db_municipio)
     await db.commit()
@@ -53,7 +57,12 @@ async def read_municipio(
 
 
 @router.put("/municipios/{municipio_id}", response_model=MunicipioResponse)
-async def update_municipio(municipio_id: int, municipio: MunicipioCreate, db: AsyncSession = Depends(get_db)):
+async def update_municipio(
+    municipio_id: int,
+    municipio: MunicipioCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_MUNICIPIOS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Municipio).where(Municipio.id == municipio_id))
     db_municipio = result.scalars().first()
     if not db_municipio:

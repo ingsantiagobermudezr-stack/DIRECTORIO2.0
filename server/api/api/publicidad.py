@@ -11,7 +11,11 @@ from seeders.seed_permisos import Permisos
 router = APIRouter()
 
 @router.post("/publicidades/", response_model=PublicidadResponse)
-async def create_publicidad(publicidad: PublicidadCreate, db: AsyncSession = Depends(get_db)):
+async def create_publicidad(
+    publicidad: PublicidadCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_PUBLICIDADES)),
+    db: AsyncSession = Depends(get_db)
+):
     try:
         db_publicidad = Publicidad(**publicidad.model_dump())
         db.add(db_publicidad)
@@ -51,7 +55,12 @@ async def read_publicidad(
     return publicidad
 
 @router.put("/publicidades/{publicidad_id}", response_model=PublicidadResponse)
-async def update_publicidad(publicidad_id: int, publicidad: PublicidadCreate, db: AsyncSession = Depends(get_db)):
+async def update_publicidad(
+    publicidad_id: int,
+    publicidad: PublicidadCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_PUBLICIDADES)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Publicidad).where(Publicidad.id == publicidad_id))
     db_publicidad = result.scalars().first()
     if not db_publicidad:

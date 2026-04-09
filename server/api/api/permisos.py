@@ -27,7 +27,11 @@ async def list_permisos(
 
 
 @router.post("/permisos", response_model=PermisoResponse, status_code=201)
-async def create_permiso(payload: PermisoBase, db: AsyncSession = Depends(get_db)):
+async def create_permiso(
+    payload: PermisoBase,
+    current_user = Depends(require_permission(Permisos.CREAR_PERMISOS)),
+    db: AsyncSession = Depends(get_db)
+):
     db_perm = Permiso(key=payload.key, descripcion=payload.descripcion)
     db.add(db_perm)
     await db.commit()
@@ -52,7 +56,12 @@ async def get_permiso(
 
 
 @router.put("/permisos/{id_permiso}", response_model=PermisoResponse)
-async def update_permiso(id_permiso: int, payload: PermisoBase, db: AsyncSession = Depends(get_db)):
+async def update_permiso(
+    id_permiso: int,
+    payload: PermisoBase,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_PERMISOS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Permiso).where(Permiso.id == id_permiso))
     perm = result.scalars().first()
     if not perm:

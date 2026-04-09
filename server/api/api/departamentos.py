@@ -14,7 +14,11 @@ router = APIRouter()
 
 
 @router.post("/departamentos/", response_model=DepartamentoResponse)
-async def create_departamento(departamento: DepartamentoCreate, db: AsyncSession = Depends(get_db)):
+async def create_departamento(
+    departamento: DepartamentoCreate,
+    current_user = Depends(require_permission(Permisos.CREAR_DEPARTAMENTOS)),
+    db: AsyncSession = Depends(get_db)
+):
     db_departamento = Departamento(**departamento.model_dump())
     db.add(db_departamento)
     await db.commit()
@@ -53,7 +57,12 @@ async def read_departamento(
 
 
 @router.put("/departamentos/{departamento_id}", response_model=DepartamentoResponse)
-async def update_departamento(departamento_id: int, departamento: DepartamentoCreate, db: AsyncSession = Depends(get_db)):
+async def update_departamento(
+    departamento_id: int,
+    departamento: DepartamentoCreate,
+    current_user = Depends(require_permission(Permisos.MODIFICAR_DEPARTAMENTOS)),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Departamento).where(Departamento.id == departamento_id))
     db_departamento = result.scalars().first()
     if not db_departamento:
