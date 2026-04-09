@@ -122,7 +122,7 @@ class Empresa(Base):
     telefono = Column(String(20))
     id_categoria = Column(Integer, ForeignKey('categorias.id'))
     id_municipio = Column(Integer, ForeignKey('municipios.id'))
-    logo = Column(String(255), nullable=True)
+    logo_url = Column(String(255), nullable=True)
 
     # Relaciones con otros modelos
     categoria = relationship("Categoria", back_populates="empresas")
