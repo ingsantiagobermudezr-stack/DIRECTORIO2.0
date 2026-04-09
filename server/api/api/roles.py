@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from typing import List
 from sqlalchemy.orm import Session
 from api.db.conexion import get_db
@@ -50,9 +51,9 @@ def update_role(id_rol: int, payload: RolCreate, db: Session = Depends(get_db)):
 
 @router.delete("/roles/{id_rol}")
 def delete_role(id_rol: int, db: Session = Depends(get_db)):
-    role = db.query(Rol).filter(Rol.id_rol == id_rol).first()
+    role = db.query(Rol).filter(Rol.id == id_rol).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
-    db.delete(role)
+    role.deleted_at = datetime.utcnow()
     db.commit()
-    return {"detail": "Role deleted"}
+    return {"detail": "Role deactivated"}

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session, joinedload
 
 from api.schemas.schemas import ReviewCreate, ReviewResponse, ReviewResponseCreate
@@ -42,9 +43,9 @@ def update_review(review_id: int, review: ReviewCreate, db: Session = Depends(ge
 
 @router.delete("/reviews/{review_id}")
 def delete_review(review_id: int, db: Session = Depends(get_db)):
-    review = db.query(Review).filter(Review.id_review == review_id).first()
+    review = db.query(Review).filter(Review.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review no encontrada")
-    db.delete(review)
+    review.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "Review eliminada correctamente"}
+    return {"message": "Review desactivada correctamente"}

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from api.schemas.schemas import CategoriaCreate, CategoriaResponse
@@ -60,9 +61,9 @@ def update_categoria(categoria_id: int, categoria: CategoriaCreate, db: Session 
 
 @router.delete("/categorias/{categoria_id}")
 def delete_categoria(categoria_id: int, db: Session = Depends(get_db)):
-    categoria = db.query(Categoria).filter(Categoria.id_categoria == categoria_id).first()
+    categoria = db.query(Categoria).filter(Categoria.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    db.delete(categoria)
+    categoria.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "Categoría eliminada correctamente"}
+    return {"message": "Categoría desactivada correctamente"}

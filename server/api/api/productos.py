@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from typing import List
 from sqlalchemy.orm import Session
 from api.db.conexion import get_db
@@ -35,6 +36,6 @@ def delete_producto(id_producto: int, db: Session = Depends(get_db)):
     p = db.query(Producto).filter(Producto.id_producto == id_producto).first()
     if not p:
         raise HTTPException(status_code=404, detail="Producto not found")
-    db.delete(p)
+    p.deleted_at = datetime.utcnow()
     db.commit()
-    return {"detail": "Producto eliminado"}
+    return {"detail": "Producto desactivado"}

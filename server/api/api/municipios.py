@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from api.schemas.schemas import MunicipioCreate, MunicipioResponse
@@ -41,9 +42,9 @@ def update_municipio(municipio_id: int, municipio: MunicipioCreate, db: Session 
 
 @router.delete("/municipios/{municipio_id}")
 def delete_municipio(municipio_id: int, db: Session = Depends(get_db)):
-    municipio = db.query(Municipio).filter(Municipio.id_municipio == municipio_id).first()
+    municipio = db.query(Municipio).filter(Municipio.id == municipio_id).first()
     if not municipio:
         raise HTTPException(status_code=404, detail="Municipio no encontrado")
-    db.delete(municipio)
+    municipio.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "Municipio eliminado correctamente"}
+    return {"message": "Municipio desactivado correctamente"}

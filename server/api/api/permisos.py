@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from typing import List
 from sqlalchemy.orm import Session
 from api.db.conexion import get_db
@@ -47,6 +48,6 @@ def delete_permiso(id_permiso: int, db: Session = Depends(get_db)):
     perm = db.query(Permiso).filter(Permiso.id == id_permiso).first()
     if not perm:
         raise HTTPException(status_code=404, detail="Permiso not found")
-    db.delete(perm)
+    perm.deleted_at = datetime.utcnow()
     db.commit()
-    return {"detail": "Permiso deleted"}
+    return {"detail": "Permiso deactivated"}

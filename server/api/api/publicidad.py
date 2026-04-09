@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 from api.schemas.schemas import PublicidadCreate, PublicidadResponse
 from api.models.models import Publicidad
@@ -46,13 +47,13 @@ def update_publicidad(publicidad_id: int, publicidad: PublicidadCreate, db: Sess
 
 @router.delete("/publicidades/{publicidad_id}")
 def delete_publicidad(publicidad_id: int, db: Session = Depends(get_db)):
-    publicidad = db.query(Publicidad).filter(Publicidad.id_publicidad == publicidad_id).first()
+    publicidad = db.query(Publicidad).filter(Publicidad.id == publicidad_id).first()
     if not publicidad:
         raise HTTPException(status_code=404, detail="Publicidad no encontrada")
     try:
-        db.delete(publicidad)
+        publicidad.deleted_at = datetime.utcnow()
         db.commit()
-        return {"message": "Publicidad eliminada correctamente"}
+        return {"message": "Publicidad desactivada correctamente"}
     except Exception as e:
         print(f"Error al eliminar publicidad: {e}")
         raise HTTPException(status_code=500, detail="Error al eliminar la publicidad")

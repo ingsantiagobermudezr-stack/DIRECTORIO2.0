@@ -1,5 +1,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import List
 from api.db.conexion import get_db
@@ -46,9 +47,9 @@ def update_marketplace(id_marketplace: int, item: MarketplaceCreate, db: Session
 # Eliminar producto/servicio
 @router.delete("/marketplace/{id_marketplace}")
 def delete_marketplace(id_marketplace: int, db: Session = Depends(get_db)):
-    db_item = db.query(Marketplace).filter(Marketplace.id_marketplace == id_marketplace).first()
+    db_item = db.query(Marketplace).filter(Marketplace.id == id_marketplace).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Marketplace item not found")
-    db.delete(db_item)
+    db_item.deleted_at = datetime.utcnow()
     db.commit()
-    return {"detail": "Marketplace item deleted"}
+    return {"detail": "Marketplace item deactivated"}

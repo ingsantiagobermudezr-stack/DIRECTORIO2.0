@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from api.schemas.schemas import DepartamentoCreate, DepartamentoResponse
@@ -40,9 +41,9 @@ def update_departamento(departamento_id: int, departamento: DepartamentoCreate, 
 
 @router.delete("/departamentos/{departamento_id}")
 def delete_departamento(departamento_id: int, db: Session = Depends(get_db)):
-    departamento = db.query(Departamento).filter(Departamento.id_departamento == departamento_id).first()
+    departamento = db.query(Departamento).filter(Departamento.id == departamento_id).first()
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
-    db.delete(departamento)
+    departamento.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "Departamento eliminado correctamente"}
+    return {"message": "Departamento desactivado correctamente"}

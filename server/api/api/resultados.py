@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from api.schemas.schemas import ResultadoCreate, ResultadoResponse
@@ -44,6 +45,6 @@ def delete_resultado(resultado_id: int, db: Session = Depends(get_db)):
     resultado = db.query(Resultado).filter(Resultado.id == resultado_id).first()
     if not resultado:
         raise HTTPException(status_code=404, detail="Resultado no encontrado")
-    db.delete(resultado)
+    resultado.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "Resultado eliminado correctamente"}
+    return {"message": "Resultado desactivado correctamente"}

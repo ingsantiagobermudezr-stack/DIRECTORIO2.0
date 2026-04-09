@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -86,9 +87,9 @@ def update_empresa(empresa_id: int, empresa: EmpresaCreate, db: Session = Depend
 # Eliminar una empresa
 @router.delete("/empresas/{empresa_id}")
 def delete_empresa(empresa_id: int, db: Session = Depends(get_db)):
-    empresa = db.query(Empresa).filter(Empresa.id_empresa == empresa_id).first()
+    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
-    db.delete(empresa)
+    empresa.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "Empresa eliminada correctamente"}
+    return {"message": "Empresa desactivada correctamente"}

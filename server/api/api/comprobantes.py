@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from api.db.conexion import get_db
@@ -58,6 +59,6 @@ def delete_comprobante(comprobante_id: int, db: Session = Depends(get_db)):
     if not db_item:
         raise HTTPException(status_code=404, detail="Comprobante no encontrado")
 
-    db.delete(db_item)
+    db_item.deleted_at = datetime.utcnow()
     db.commit()
-    return {"detail": "Comprobante eliminado"}
+    return {"detail": "Comprobante desactivado"}

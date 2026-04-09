@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
 from api.schemas.schemas import UsuarioUpdate, UsuarioResponse, UsuarioCreate
 from api.models.models import Usuario, Rol
 from api.db.conexion import get_db
-from api.utils.audit import log_auditoria
 
 
 router = APIRouter()
@@ -37,12 +37,6 @@ def create_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     db.add(db_usuario)
     db.commit()
     db.refresh(db_usuario)
-
-    # Auditoría
-    try:
-        log_auditoria(db, tabla='usuario', operacion='create', id_registro=db_usuario.id_usuario, descripcion=f'Usuario creado: {db_usuario.correo}')
-    except Exception:
-        pass
 
     return db_usuario
 
@@ -81,25 +75,15 @@ def update_usuario(usuario_id: int, usuario: UsuarioUpdate, db: Session = Depend
     db.commit()
     db.refresh(db_usuario)
 
-    try:
-        log_auditoria(db, tabla='usuario', operacion='update', id_registro=db_usuario.id_usuario, descripcion=f'Usuario actualizado: {db_usuario.correo}')
-    except Exception:
-        pass
-
     return db_usuario
 
 
 @router.delete("/usuarios/{usuario_id}")
 def delete_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    db.delete(usuario)
+    usuario.deleted_at = datetime.utcnow()
     db.commit()
 
-    try:
-        log_auditoria(db, tabla='usuario', operacion='delete', id_registro=usuario_id, descripcion=f'Usuario eliminado: id {usuario_id}')
-    except Exception:
-        pass
-
-    return {"message": "Usuario eliminado correctamente"}
+    return {"message": "Usuario desactivado correctamente"}

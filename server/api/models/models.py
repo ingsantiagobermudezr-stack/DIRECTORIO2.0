@@ -55,6 +55,7 @@ class Permiso(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String(100), nullable=False, unique=True)
     descripcion = Column(Text, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
 
     roles = relationship('Rol', secondary=role_permiso, back_populates='permisos')
 
@@ -236,6 +237,7 @@ class Mensaje(Base):
     id_usuario_enviador_mensaje = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
     mensaje = Column(Text, nullable=False)
     fecha_hora = Column(DateTime, default=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     marketplace = relationship("Marketplace", back_populates="mensajes")
     usuario_creador_chat = relationship("Usuario", back_populates="mensajes_creados_chat", foreign_keys=[id_usuario_creador_chat])
@@ -249,6 +251,7 @@ class ArchivoMensaje(Base):
     id = Column(Integer, primary_key=True, index=True)
     id_mensaje = Column(Integer, ForeignKey('mensajes.id'), nullable=False)
     url_imagen = Column(Text, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     mensaje_rel = relationship("Mensaje", back_populates="archivos")
     comprobantes = relationship("Comprobante", back_populates="archivo", cascade="all, delete-orphan")
@@ -262,6 +265,7 @@ class Comprobante(Base):
     id_empleado_evaluador = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
     recibo_valido = Column(Boolean, nullable=False)
     cantidad_recibida = Column(Float, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     archivo = relationship("ArchivoMensaje", back_populates="comprobantes")
     empleado_evaluador = relationship("Usuario", back_populates="comprobantes_evaluados", foreign_keys=[id_empleado_evaluador])
