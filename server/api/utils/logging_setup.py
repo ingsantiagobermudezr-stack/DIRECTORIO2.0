@@ -2,7 +2,7 @@ import io
 import logging
 import os
 import sys
-from logging.handlers import TimedRotatingFileHandler
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +16,49 @@ class _StreamToLogger(io.TextIOBase):
         self.logger = logger
         self.level = level
         self._buffer = ""
+
+
+class _DailyDateFileHandler(logging.Handler):
+    """Escribe en un archivo con nombre por fecha: backend-YYYY-MM-DD.log."""
+
+    def __init__(self, log_dir: Path, encoding: str = "utf-8") -> None:
+        super().__init__()
+        self.log_dir = log_dir
+        self.encoding = encoding
+        self._current_date: str | None = None
+        self._stream = None
+
+    def _ensure_stream(self) -> None:
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        if self._stream is not None and self._current_date == current_date:
+            return
+
+        if self._stream is not None:
+            try:
+                self._stream.close()
+            except Exception:
+                pass
+
+        file_path = self.log_dir / f"backend-{current_date}.log"
+        self._stream = open(file_path, mode="a", encoding=self.encoding)
+        self._current_date = current_date
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self._ensure_stream()
+            msg = self.format(record)
+            self._stream.write(msg + "\n")
+            self._stream.flush()
+        except Exception:
+            self.handleError(record)
+
+    def close(self) -> None:
+        try:
+            if self._stream is not None:
+                self._stream.close()
+        finally:
+            self._stream = None
+            super().close()
 
     def write(self, message: str) -> int:
         if not message:
@@ -50,8 +93,6 @@ def configure_daily_logging(logs_dir: Optional[str] = None, level: int = logging
         log_dir_path = Path(__file__).resolve().parents[2] / "logs"
 
     log_dir_path.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir_path / "backend.log"
-
     formatter = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -60,14 +101,7 @@ def configure_daily_logging(logs_dir: Optional[str] = None, level: int = logging
     console_handler = logging.StreamHandler(_ORIGINAL_STDOUT)
     console_handler.setFormatter(formatter)
 
-    file_handler = TimedRotatingFileHandler(
-        filename=str(log_file),
-        when="midnight",
-        interval=1,
-        backupCount=30,
-        encoding="utf-8",
-    )
-    file_handler.suffix = "%Y-%m-%d"
+    file_handler = _DailyDateFileHandler(log_dir=log_dir_path, encoding="utf-8")
     file_handler.setFormatter(formatter)
 
     root_logger.handlers.clear()

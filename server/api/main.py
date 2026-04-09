@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.staticfiles import StaticFiles
 import logging
+import json
 from fastapi.middleware.cors import CORSMiddleware
 from importlib import import_module
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -23,8 +24,43 @@ logger = logging.getLogger("uvicorn.error")
 
 
 class LogMiddleware(BaseHTTPMiddleware):
+    @staticmethod
+    def _serialize_body(body: bytes, content_type: str | None) -> str:
+        if not body:
+            return "<empty>"
+
+        max_chars = 4000
+        content_type = (content_type or "").lower()
+
+        if "application/json" in content_type:
+            try:
+                payload = json.loads(body.decode("utf-8"))
+                if isinstance(payload, dict):
+                    for key in ("password", "token", "access_token"):
+                        if key in payload:
+                            payload[key] = "***"
+                serialized = json.dumps(payload, ensure_ascii=False)
+            except Exception:
+                serialized = body.decode("utf-8", errors="replace")
+        elif content_type.startswith("multipart/form-data"):
+            serialized = f"<multipart/form-data {len(body)} bytes>"
+        else:
+            serialized = body.decode("utf-8", errors="replace")
+
+        if len(serialized) > max_chars:
+            return f"{serialized[:max_chars]}... <truncated>"
+        return serialized
+
     async def dispatch(self, request, call_next):
-        logger.info("Request: %s %s", request.method, request.url)
+        body = await request.body()
+        body_preview = self._serialize_body(body, request.headers.get("content-type"))
+
+        async def receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        request = Request(request.scope, receive)
+
+        logger.info("Request: %s %s | body=%s", request.method, request.url, body_preview)
         response = await call_next(request)
         logger.info("Response status: %s", response.status_code)
         return response
