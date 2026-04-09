@@ -267,6 +267,9 @@ class Comprobante(Base):
     id_empleado_evaluador = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
     recibo_valido = Column(Boolean, nullable=False)
     cantidad_recibida = Column(Float, nullable=False)
+    estado = Column(String(20), nullable=False, default='pendiente')
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    fecha_resolucion = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 
     archivo = relationship("ArchivoMensaje", back_populates="comprobantes")

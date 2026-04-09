@@ -445,8 +445,15 @@ class ComprobanteCreate(ComprobanteBase):
 
 class ComprobanteResponse(ComprobanteBase):
     id: int
+    estado: str
+    fecha_creacion: datetime
+    fecha_resolucion: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class ComprobanteEstadoUpdate(BaseModel):
+    observacion: Optional[str] = None
 
 # Esquemas para Notificaciones (Sistema de notificaciones en tiempo real)
 class NotificacionBase(BaseModel):

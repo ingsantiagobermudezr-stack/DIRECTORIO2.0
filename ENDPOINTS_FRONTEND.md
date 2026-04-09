@@ -458,6 +458,58 @@ Response:
 }
 ```
 
+### POST `/comprobantes/{comprobante_id}/aprobar` - Aprobar Comprobante
+Solo el evaluador asignado o admin puede cambiar estado final
+```
+Response:
+{
+  "message": "Comprobante aprobado",
+  "id": 3,
+  "estado": "aprobado"
+}
+```
+
+### POST `/comprobantes/{comprobante_id}/rechazar` - Rechazar Comprobante
+Solo el evaluador asignado o admin puede cambiar estado final
+```
+Response:
+{
+  "message": "Comprobante rechazado",
+  "id": 3,
+  "estado": "rechazado"
+}
+```
+
+### GET `/comprobantes/{comprobante_id}/timeline` - Timeline de Transacción
+Devuelve progreso compra/registro/validación para frontend
+```
+Response:
+{
+  "comprobante_id": 3,
+  "estado_actual": "pendiente",
+  "timeline": [
+    {
+      "paso": "compra_solicitada",
+      "estado": "completado",
+      "fecha": "2026-04-09T16:00:00",
+      "descripcion": "El comprador inició conversación sobre el producto"
+    },
+    {
+      "paso": "comprobante_registrado",
+      "estado": "completado",
+      "fecha": "2026-04-09T16:10:00",
+      "descripcion": "Se cargó el comprobante y quedó pendiente de validación"
+    },
+    {
+      "paso": "validacion_pago",
+      "estado": "pendiente",
+      "fecha": null,
+      "descripcion": "Resultado final de la validación del comprobante"
+    }
+  ]
+}
+```
+
 ---
 
 ## 👤 USUARIOS (Mi Perfil)

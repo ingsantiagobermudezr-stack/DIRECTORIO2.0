@@ -2,20 +2,30 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
 from api.models.models import Comprobante, ArchivoMensaje
 from api.schemas.schemas import ComprobanteCreate, ComprobanteResponse
-from api.api.auth import can_view_deleted_records, require_permission
+from api.api.auth import can_view_deleted_records, require_permission, get_current_user
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
 
+def _is_admin(user) -> bool:
+    rol = getattr(getattr(user, "rol_obj", None), "nombre", "")
+    return str(rol).lower() == "admin"
+
+
+def _puede_resolver_comprobante(user, comprobante: Comprobante) -> bool:
+    return _is_admin(user) or user.id == comprobante.id_empleado_evaluador
+
+
 @router.post("/comprobantes/", response_model=ComprobanteResponse, status_code=201)
 async def create_comprobante(payload: ComprobanteCreate, db: AsyncSession = Depends(get_db)):
-    db_item = Comprobante(**payload.model_dump())
+    db_item = Comprobante(**payload.model_dump(), estado="pendiente", fecha_resolucion=None)
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
@@ -65,6 +75,10 @@ async def update_comprobante(comprobante_id: int, payload: ComprobanteCreate, db
 
     for key, value in payload.model_dump().items():
         setattr(db_item, key, value)
+
+    # Edición de payload no debe cerrar el flujo de estado
+    if db_item.estado in ("aprobado", "rechazado"):
+        raise HTTPException(status_code=409, detail="El comprobante ya fue resuelto y no puede editarse")
 
     await db.commit()
     await db.refresh(db_item)
@@ -127,6 +141,8 @@ async def registrar_comprobante_desde_archivo(
         id_empleado_evaluador=id_empleado_evaluador,
         recibo_valido=recibo_valido,
         cantidad_recibida=cantidad_recibida,
+        estado="pendiente",
+        fecha_resolucion=None,
     )
     db.add(comprobante)
     await db.commit()
@@ -146,4 +162,109 @@ async def registrar_comprobante_desde_archivo(
             "id_mensaje": archivo_item.id_mensaje,
             "url_imagen": archivo_item.url_imagen,
         },
+    }
+
+
+@router.post("/comprobantes/{comprobante_id}/aprobar")
+async def aprobar_comprobante(
+    comprobante_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Comprobante).where(Comprobante.id == comprobante_id, Comprobante.deleted_at.is_(None))
+    )
+    comprobante = result.scalars().first()
+    if not comprobante:
+        raise HTTPException(status_code=404, detail="Comprobante no encontrado")
+
+    if not _puede_resolver_comprobante(current_user, comprobante):
+        raise HTTPException(status_code=403, detail="Solo el evaluador asignado o un admin puede aprobar")
+
+    if comprobante.estado in ("aprobado", "rechazado"):
+        raise HTTPException(status_code=409, detail="El comprobante ya fue resuelto")
+
+    comprobante.estado = "aprobado"
+    comprobante.recibo_valido = True
+    comprobante.fecha_resolucion = datetime.utcnow()
+    await db.commit()
+    await db.refresh(comprobante)
+
+    return {"message": "Comprobante aprobado", "id": comprobante.id, "estado": comprobante.estado}
+
+
+@router.post("/comprobantes/{comprobante_id}/rechazar")
+async def rechazar_comprobante(
+    comprobante_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Comprobante).where(Comprobante.id == comprobante_id, Comprobante.deleted_at.is_(None))
+    )
+    comprobante = result.scalars().first()
+    if not comprobante:
+        raise HTTPException(status_code=404, detail="Comprobante no encontrado")
+
+    if not _puede_resolver_comprobante(current_user, comprobante):
+        raise HTTPException(status_code=403, detail="Solo el evaluador asignado o un admin puede rechazar")
+
+    if comprobante.estado in ("aprobado", "rechazado"):
+        raise HTTPException(status_code=409, detail="El comprobante ya fue resuelto")
+
+    comprobante.estado = "rechazado"
+    comprobante.recibo_valido = False
+    comprobante.fecha_resolucion = datetime.utcnow()
+    await db.commit()
+    await db.refresh(comprobante)
+
+    return {"message": "Comprobante rechazado", "id": comprobante.id, "estado": comprobante.estado}
+
+
+@router.get("/comprobantes/{comprobante_id}/timeline")
+async def timeline_comprobante(
+    comprobante_id: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
+        select(Comprobante)
+        .options(joinedload(Comprobante.archivo).joinedload(ArchivoMensaje.mensaje_rel))
+        .where(Comprobante.id == comprobante_id)
+    )
+    if not can_view_deleted:
+        query = query.where(Comprobante.deleted_at.is_(None))
+
+    result = await db.execute(query)
+    comprobante = result.scalars().first()
+    if not comprobante:
+        raise HTTPException(status_code=404, detail="Comprobante no encontrado")
+
+    mensaje = comprobante.archivo.mensaje_rel if comprobante.archivo else None
+
+    timeline = [
+        {
+            "paso": "compra_solicitada",
+            "estado": "completado" if mensaje else "pendiente",
+            "fecha": getattr(mensaje, "fecha_hora", None),
+            "descripcion": "El comprador inició conversación sobre el producto",
+        },
+        {
+            "paso": "comprobante_registrado",
+            "estado": "completado",
+            "fecha": comprobante.fecha_creacion,
+            "descripcion": "Se cargó el comprobante y quedó pendiente de validación",
+        },
+        {
+            "paso": "validacion_pago",
+            "estado": comprobante.estado,
+            "fecha": comprobante.fecha_resolucion,
+            "descripcion": "Resultado final de la validación del comprobante",
+        },
+    ]
+
+    return {
+        "comprobante_id": comprobante.id,
+        "estado_actual": comprobante.estado,
+        "timeline": timeline,
     }
