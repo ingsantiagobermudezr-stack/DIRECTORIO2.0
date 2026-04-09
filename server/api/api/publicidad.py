@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.schemas.schemas import PublicidadCreate, PublicidadResponse
-from api.models.models import Publicidad
+from api.models.models import Publicidad, ImagenPublicidad
 from api.db.conexion import get_db
 from api.api.auth import can_view_deleted_records, require_permission
+from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -104,3 +105,39 @@ async def restore_publicidad(
     publicidad.deleted_at = None
     await db.commit()
     return {"message": "Publicidad restaurada correctamente"}
+
+
+@router.post("/publicidades/{publicidad_id}/imagenes/upload")
+async def upload_publicidad_images(
+    publicidad_id: int,
+    archivos: list[UploadFile] = File(...),
+    _: object = Depends(require_permission(Permisos.MODIFICAR_PUBLICIDADES)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sube una o varias imágenes para una publicidad."""
+    if not archivos:
+        raise HTTPException(status_code=400, detail="Debe enviar al menos un archivo")
+
+    result = await db.execute(
+        select(Publicidad).where(Publicidad.id == publicidad_id, Publicidad.deleted_at.is_(None))
+    )
+    publicidad = result.scalars().first()
+    if not publicidad:
+        raise HTTPException(status_code=404, detail="Publicidad no encontrada")
+
+    upload_dir = ensure_upload_dir(get_upload_root(), "publicidades")
+    uploaded_urls: list[str] = []
+
+    for archivo in archivos:
+        file_name = await save_upload_file(archivo, upload_dir)
+        image_url = build_public_url(file_name, "publicidades")
+        db.add(ImagenPublicidad(id_publicidad=publicidad_id, imagen_url=image_url))
+        uploaded_urls.append(image_url)
+
+    await db.commit()
+
+    return {
+        "message": "Imágenes subidas correctamente",
+        "id_publicidad": publicidad_id,
+        "imagenes": uploaded_urls,
+    }

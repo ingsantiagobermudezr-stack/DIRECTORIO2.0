@@ -7,10 +7,12 @@ excepciones para ayudar a identificar fallos silenciosos durante la inicializaci
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from fastapi.staticfiles import StaticFiles
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 from importlib import import_module
 from starlette.middleware.base import BaseHTTPMiddleware
+from pathlib import Path
 from api.utils.logging_setup import configure_daily_logging
 
 configure_daily_logging()
@@ -28,6 +30,10 @@ class LogMiddleware(BaseHTTPMiddleware):
         return response
 
 app = FastAPI(title="Directorio API", description="API del Sistema de Directorio Empresarial", version="1.0.0", lifespan=lifespan)
+
+uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 origins = ["*"]  # Permitir todas las fuentes; ajustar en producción para mayor seguridad
 

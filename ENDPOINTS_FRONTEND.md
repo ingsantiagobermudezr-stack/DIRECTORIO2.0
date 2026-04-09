@@ -216,6 +216,19 @@ Request: { ...campos a actualizar }
 Response: { empresa...actualizada }
 ```
 
+### POST `/empresas/{empresa_id}/logo/upload` - Subir Logo ⚠️ Requiere `modificar_empresas`
+Subir logo de empresa (multipart/form-data)
+```
+Body: archivo=<imagen.jpg|png|webp> (máx 5MB)
+
+Response:
+{
+  "message": "Logo subido correctamente",
+  "empresa_id": 1,
+  "logo_url": "/uploads/empresas/abc123.webp"
+}
+```
+
 ### DELETE `/empresas/{empresa_id}` - Eliminar Empresa ⚠️ Requiere `modificar_empresas`
 Soft delete (marca deleted_at)
 ```
@@ -286,6 +299,22 @@ Response: { producto...creado }
 ### PUT `/marketplace/{id_marketplace}` - Editar Producto ⚠️ Requiere `modificar_marketplace`
 ```
 Response: { producto...actualizado }
+```
+
+### POST `/marketplace/{id_marketplace}/imagenes/upload` - Subir Imágenes ⚠️ Requiere `modificar_marketplace`
+Subir una o múltiples imágenes de producto (multipart/form-data)
+```
+Body: archivos[]=<imagen1.jpg>, archivos[]=<imagen2.png> (máx 5MB por archivo)
+
+Response:
+{
+  "message": "Imágenes subidas correctamente",
+  "id_marketplace": 5,
+  "imagenes": [
+    "/uploads/marketplace/a1b2c3.jpg",
+    "/uploads/marketplace/d4e5f6.png"
+  ]
+}
 ```
 
 ### DELETE `/marketplace/{id_marketplace}` - Eliminar Producto ⚠️ Requiere `modificar_marketplace`
@@ -451,6 +480,22 @@ Response: { publicidad...creada }
 Response: { publicidad...actualizada }
 ```
 
+### POST `/publicidades/{publicidad_id}/imagenes/upload` - Subir Imágenes ⚠️ Requiere `modificar_publicidades`
+Subir una o múltiples imágenes de publicidad (multipart/form-data)
+```
+Body: archivos[]=<imagen1.jpg>, archivos[]=<imagen2.webp> (máx 5MB por archivo)
+
+Response:
+{
+  "message": "Imágenes subidas correctamente",
+  "id_publicidad": 3,
+  "imagenes": [
+    "/uploads/publicidades/abc111.jpg",
+    "/uploads/publicidades/abc222.webp"
+  ]
+}
+```
+
 ---
 
 ## 🔒 NOTAS DE SEGURIDAD
@@ -613,7 +658,7 @@ Response:
 
 ## 🚀 PRÓXIMAS MEJORAS SUGERIDAS
 
-1. **Upload de Imágenes**: Agregar endpoints para subir fotos (empresas, marketplace, publicidades)
+1. ✅ **Upload de Imágenes**: Endpoints implementados para empresas, marketplace y publicidades
 2. ✅ **Filtro de Rating**: Filtrar empresas por calificación promedio (parámetro `rating_min`)
 3. ✅ **Wishlist**: Agregar/eliminar favoritos (tabla `usuarios_favoritos` implementada)
 4. ✅ **Búsqueda Global**: Endpoints `/busqueda/global/` y `/busqueda/sugerencias/` implementados

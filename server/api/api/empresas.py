@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, and_, or_, func
@@ -10,6 +10,7 @@ from api.schemas.schemas import EmpresaCreate, EmpresaResponse, EmpresaResponseG
 from api.models.models import Empresa, Categoria, Municipio, Review
 from api.db.conexion import get_db
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional
+from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -218,3 +219,30 @@ async def restore_empresa(
     empresa.deleted_at = None
     await db.commit()
     return {"message": "Empresa restaurada correctamente"}
+
+
+@router.post("/empresas/{empresa_id}/logo/upload")
+async def upload_logo_empresa(
+    empresa_id: int,
+    archivo: UploadFile = File(...),
+    _: object = Depends(require_permission(Permisos.MODIFICAR_EMPRESAS)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sube logo de empresa y actualiza `logo_url`."""
+    result = await db.execute(select(Empresa).where(Empresa.id == empresa_id, Empresa.deleted_at.is_(None)))
+    empresa = result.scalars().first()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    upload_dir = ensure_upload_dir(get_upload_root(), "empresas")
+    file_name = await save_upload_file(archivo, upload_dir)
+    empresa.logo_url = build_public_url(file_name, "empresas")
+
+    await db.commit()
+    await db.refresh(empresa)
+
+    return {
+        "message": "Logo subido correctamente",
+        "empresa_id": empresa.id,
+        "logo_url": empresa.logo_url,
+    }

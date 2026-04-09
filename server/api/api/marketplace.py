@@ -1,15 +1,16 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Marketplace, Empresa
+from api.models.models import Marketplace, Empresa, ImagenMarketplace
 from api.schemas.schemas import MarketplaceCreate, MarketplaceResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional
+from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -191,3 +192,39 @@ async def restore_marketplace(
     item.deleted_at = None
     await db.commit()
     return {"detail": "Marketplace item restored"}
+
+
+@router.post("/marketplace/{id_marketplace}/imagenes/upload")
+async def upload_marketplace_images(
+    id_marketplace: int,
+    archivos: list[UploadFile] = File(...),
+    _: object = Depends(require_permission(Permisos.MODIFICAR_MARKETPLACE)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sube una o varias imágenes para un producto de marketplace."""
+    if not archivos:
+        raise HTTPException(status_code=400, detail="Debe enviar al menos un archivo")
+
+    result = await db.execute(
+        select(Marketplace).where(Marketplace.id == id_marketplace, Marketplace.deleted_at.is_(None))
+    )
+    item = result.scalars().first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Marketplace item not found")
+
+    upload_dir = ensure_upload_dir(get_upload_root(), "marketplace")
+    uploaded_urls: list[str] = []
+
+    for archivo in archivos:
+        file_name = await save_upload_file(archivo, upload_dir)
+        image_url = build_public_url(file_name, "marketplace")
+        db.add(ImagenMarketplace(id_marketplace=id_marketplace, imagen_url=image_url))
+        uploaded_urls.append(image_url)
+
+    await db.commit()
+
+    return {
+        "message": "Imágenes subidas correctamente",
+        "id_marketplace": id_marketplace,
+        "imagenes": uploaded_urls,
+    }
