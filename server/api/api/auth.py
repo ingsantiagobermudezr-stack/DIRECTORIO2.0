@@ -60,6 +60,17 @@ def _extract_auth_context(user: models.Usuario) -> tuple[str | None, list[str]]:
         permisos = [p.key for p in (user.rol_obj.permisos or []) if getattr(p, "key", None)]
     return rol_nombre, permisos
 
+
+def _has_permission(current_user: Optional[models.Usuario], permission_key: str) -> bool:
+    if not current_user:
+        return False
+    if getattr(current_user, "rol", None) == "admin":
+        return True
+    rol_nombre, permisos = _extract_auth_context(current_user)
+    if rol_nombre == "admin":
+        return True
+    return permission_key in permisos
+
 async def authenticate_user(db: AsyncSession, correo: str, password: str):
     user = await get_user(db, correo)
     if not user:
@@ -181,6 +192,26 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: As
     return user
 
 
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(conexion.get_db),
+):
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        correo: str = payload.get("sub")
+        if correo is None:
+            return None
+    except JWTError:
+        return None
+    return await get_user(db, correo)
+
+
+async def can_view_deleted_records(current_user: Optional[models.Usuario] = Depends(get_current_user_optional)) -> bool:
+    return _has_permission(current_user, Permisos.VER_REGISTROS_ELIMINADOS.value)
+
+
 async def require_admin(current_user: models.Usuario = Depends(get_current_user)):
     # Permitimos administrador por nombre de rol legacy o por relación normalizada
     if getattr(current_user, 'rol', None) == 'admin':
@@ -192,10 +223,9 @@ async def require_admin(current_user: models.Usuario = Depends(get_current_user)
 
 def require_permission(permission_name: Permisos):
     async def dependency(current_user: models.Usuario = Depends(get_current_user)):
-        _, permisos = _extract_auth_context(current_user)
         required_permission = permission_name.value if isinstance(permission_name, Permisos) else str(permission_name)
 
-        if required_permission in permisos:
+        if _has_permission(current_user, required_permission):
             return current_user
 
         raise HTTPException(

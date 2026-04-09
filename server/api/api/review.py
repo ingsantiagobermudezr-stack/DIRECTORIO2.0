@@ -7,6 +7,8 @@ from sqlalchemy.orm import joinedload
 from api.schemas.schemas import ReviewCreate, ReviewResponse, ReviewResponseCreate
 from api.models.models import Review
 from api.db.conexion import get_db
+from api.api.auth import can_view_deleted_records, require_permission
+from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
@@ -20,22 +22,32 @@ async def create_review(review: ReviewCreate, db: AsyncSession = Depends(get_db)
     return db_review
 
 @router.get("/reviews/", response_model=list[ReviewResponse])
-async def read_reviews(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Review)
-        .options(joinedload(Review.usuario))
-        .offset(skip)
-        .limit(limit)
-    )
+async def read_reviews(
+    skip: int = 0,
+    limit: int = 10,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Review).options(joinedload(Review.usuario))
+    if not can_view_deleted:
+        query = query.where(Review.deleted_at.is_(None))
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 @router.get("/reviews/{id_empresa}", response_model=list[ReviewResponse])
-async def read_review(id_empresa: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+async def read_review(
+    id_empresa: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
         select(Review)
         .where(Review.id_empresa == id_empresa)
         .options(joinedload(Review.usuario))
     )
+    if not can_view_deleted:
+        query = query.where(Review.deleted_at.is_(None))
+    result = await db.execute(query)
     review = result.scalars().all()
     if not review:
         return []
@@ -63,3 +75,19 @@ async def delete_review(review_id: int, db: AsyncSession = Depends(get_db)):
     review.deleted_at = datetime.utcnow()
     await db.commit()
     return {"message": "Review desactivada correctamente"}
+
+
+@router.patch("/reviews/{review_id}/restore")
+async def restore_review(
+    review_id: int,
+    _: object = Depends(require_permission(Permisos.RESTAURAR_REGISTROS_ELIMINADOS)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Review).where(Review.id == review_id))
+    review = result.scalars().first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review no encontrada")
+
+    review.deleted_at = None
+    await db.commit()
+    return {"message": "Review restaurada correctamente"}

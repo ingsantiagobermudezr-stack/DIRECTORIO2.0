@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.schemas.schemas import PublicidadCreate, PublicidadResponse
 from api.models.models import Publicidad
 from api.db.conexion import get_db
+from api.api.auth import can_view_deleted_records, require_permission
+from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
@@ -21,13 +23,28 @@ async def create_publicidad(publicidad: PublicidadCreate, db: AsyncSession = Dep
         raise HTTPException(status_code=500, detail="Error al crear la publicidad")
 
 @router.get("/publicidades/", response_model=list[PublicidadResponse])
-async def read_publicidades(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Publicidad).offset(skip).limit(limit))
+async def read_publicidades(
+    skip: int = 0,
+    limit: int = 10,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Publicidad)
+    if not can_view_deleted:
+        query = query.where(Publicidad.deleted_at.is_(None))
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 @router.get("/publicidades/{publicidad_id}", response_model=PublicidadResponse)
-async def read_publicidad(publicidad_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Publicidad).where(Publicidad.id == publicidad_id))
+async def read_publicidad(
+    publicidad_id: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Publicidad).where(Publicidad.id == publicidad_id)
+    if not can_view_deleted:
+        query = query.where(Publicidad.deleted_at.is_(None))
+    result = await db.execute(query)
     publicidad = result.scalars().first()
     if not publicidad:
         raise HTTPException(status_code=404, detail="Publicidad no encontrada")
@@ -62,3 +79,19 @@ async def delete_publicidad(publicidad_id: int, db: AsyncSession = Depends(get_d
     except Exception as e:
         print(f"Error al eliminar publicidad: {e}")
         raise HTTPException(status_code=500, detail="Error al eliminar la publicidad")
+
+
+@router.patch("/publicidades/{publicidad_id}/restore")
+async def restore_publicidad(
+    publicidad_id: int,
+    _: object = Depends(require_permission(Permisos.RESTAURAR_REGISTROS_ELIMINADOS)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Publicidad).where(Publicidad.id == publicidad_id))
+    publicidad = result.scalars().first()
+    if not publicidad:
+        raise HTTPException(status_code=404, detail="Publicidad no encontrada")
+
+    publicidad.deleted_at = None
+    await db.commit()
+    return {"message": "Publicidad restaurada correctamente"}

@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.db.conexion import get_db
 from api.models.models import Mensaje
 from api.schemas.schemas import MensajeCreate, MensajeResponse
+from api.api.auth import can_view_deleted_records, require_permission
+from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
@@ -24,9 +26,12 @@ async def list_mensajes(
     skip: int = 0,
     limit: int = 50,
     id_marketplace: int | None = Query(default=None),
+    can_view_deleted: bool = Depends(can_view_deleted_records),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Mensaje)
+    if not can_view_deleted:
+        query = query.where(Mensaje.deleted_at.is_(None))
     if id_marketplace is not None:
         query = query.where(Mensaje.id_marketplace == id_marketplace)
     query = query.order_by(Mensaje.fecha_hora.desc()).offset(skip).limit(limit)
@@ -35,8 +40,15 @@ async def list_mensajes(
 
 
 @router.get("/mensajes/{mensaje_id}", response_model=MensajeResponse)
-async def get_mensaje(mensaje_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Mensaje).where(Mensaje.id == mensaje_id))
+async def get_mensaje(
+    mensaje_id: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Mensaje).where(Mensaje.id == mensaje_id)
+    if not can_view_deleted:
+        query = query.where(Mensaje.deleted_at.is_(None))
+    result = await db.execute(query)
     db_item = result.scalars().first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Mensaje no encontrado")
@@ -68,3 +80,19 @@ async def delete_mensaje(mensaje_id: int, db: AsyncSession = Depends(get_db)):
     db_item.deleted_at = datetime.utcnow()
     await db.commit()
     return {"detail": "Mensaje desactivado"}
+
+
+@router.patch("/mensajes/{mensaje_id}/restore")
+async def restore_mensaje(
+    mensaje_id: int,
+    _: object = Depends(require_permission(Permisos.RESTAURAR_REGISTROS_ELIMINADOS)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Mensaje).where(Mensaje.id == mensaje_id))
+    db_item = result.scalars().first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Mensaje no encontrado")
+
+    db_item.deleted_at = None
+    await db.commit()
+    return {"detail": "Mensaje restaurado"}

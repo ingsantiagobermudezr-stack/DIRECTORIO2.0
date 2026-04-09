@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.db.conexion import get_db
 from api.models.models import Municipio
 from api.schemas.schemas import MunicipioCreate, MunicipioResponse
+from api.api.auth import can_view_deleted_records, require_permission
+from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
@@ -21,14 +23,29 @@ async def create_municipio(municipio: MunicipioCreate, db: AsyncSession = Depend
 
 
 @router.get("/municipios/", response_model=list[MunicipioResponse])
-async def read_municipios(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Municipio).offset(skip).limit(limit))
+async def read_municipios(
+    skip: int = 0,
+    limit: int = 10,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Municipio)
+    if not can_view_deleted:
+        query = query.where(Municipio.deleted_at.is_(None))
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 
 @router.get("/municipios/{municipio_id}", response_model=MunicipioResponse)
-async def read_municipio(municipio_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Municipio).where(Municipio.id == municipio_id))
+async def read_municipio(
+    municipio_id: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Municipio).where(Municipio.id == municipio_id)
+    if not can_view_deleted:
+        query = query.where(Municipio.deleted_at.is_(None))
+    result = await db.execute(query)
     municipio = result.scalars().first()
     if not municipio:
         raise HTTPException(status_code=404, detail="Municipio no encontrado")
@@ -60,3 +77,19 @@ async def delete_municipio(municipio_id: int, db: AsyncSession = Depends(get_db)
     municipio.deleted_at = datetime.utcnow()
     await db.commit()
     return {"message": "Municipio desactivado correctamente"}
+
+
+@router.patch("/municipios/{municipio_id}/restore")
+async def restore_municipio(
+    municipio_id: int,
+    _: object = Depends(require_permission(Permisos.RESTAURAR_REGISTROS_ELIMINADOS)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Municipio).where(Municipio.id == municipio_id))
+    municipio = result.scalars().first()
+    if not municipio:
+        raise HTTPException(status_code=404, detail="Municipio no encontrado")
+
+    municipio.deleted_at = None
+    await db.commit()
+    return {"message": "Municipio restaurado correctamente"}

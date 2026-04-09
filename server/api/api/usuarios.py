@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.db.conexion import get_db
 from api.models.models import Rol, Usuario
 from api.schemas.schemas import UsuarioCreate, UsuarioResponse, UsuarioUpdate
+from api.api.auth import can_view_deleted_records, require_permission
+from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
@@ -38,14 +40,29 @@ async def create_usuario(usuario: UsuarioCreate, db: AsyncSession = Depends(get_
 
 
 @router.get("/usuarios/", response_model=list[UsuarioResponse])
-async def read_usuarios(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Usuario).offset(skip).limit(limit))
+async def read_usuarios(
+    skip: int = 0,
+    limit: int = 10,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Usuario)
+    if not can_view_deleted:
+        query = query.where(Usuario.deleted_at.is_(None))
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 
 @router.get("/usuarios/{usuario_id}", response_model=UsuarioResponse)
-async def read_usuario(usuario_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
+async def read_usuario(
+    usuario_id: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Usuario).where(Usuario.id == usuario_id)
+    if not can_view_deleted:
+        query = query.where(Usuario.deleted_at.is_(None))
+    result = await db.execute(query)
     usuario = result.scalars().first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -86,3 +103,19 @@ async def delete_usuario(usuario_id: int, db: AsyncSession = Depends(get_db)):
     usuario.deleted_at = datetime.utcnow()
     await db.commit()
     return {"message": "Usuario desactivado correctamente"}
+
+
+@router.patch("/usuarios/{usuario_id}/restore")
+async def restore_usuario(
+    usuario_id: int,
+    _: object = Depends(require_permission(Permisos.RESTAURAR_REGISTROS_ELIMINADOS)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
+    usuario = result.scalars().first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    usuario.deleted_at = None
+    await db.commit()
+    return {"message": "Usuario restaurado correctamente"}

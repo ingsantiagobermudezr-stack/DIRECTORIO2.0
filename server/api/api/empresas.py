@@ -8,6 +8,8 @@ from sqlalchemy.orm import joinedload
 from api.schemas.schemas import EmpresaCreate, EmpresaResponse, EmpresaResponseGet
 from api.models.models import Empresa, Categoria, Municipio
 from api.db.conexion import get_db
+from api.api.auth import can_view_deleted_records, require_permission
+from seeders.seed_permisos import Permisos
 
 router = APIRouter()
 
@@ -57,12 +59,16 @@ async def create_empresa(empresa: EmpresaCreate, db: AsyncSession = Depends(get_
 @router.get("/empresas/", response_model=list[EmpresaResponseGet])
 async def read_empresas(skip: int = 0, limit: int = 10,
     nombre: str | None = Query(default=None, description="Filtrar por nombre de empresa"),
+    can_view_deleted: bool = Depends(can_view_deleted_records),
     db: AsyncSession = Depends(get_db)):
 
     query = select(Empresa)
 
     if nombre:
         query = query.where(Empresa.nombre.ilike(f"%{nombre}%"))
+
+    if not can_view_deleted:
+        query = query.where(Empresa.deleted_at.is_(None))
 
     query = query.options(joinedload(Empresa.categoria))
     query = query.options(joinedload(Empresa.municipio))
@@ -72,12 +78,19 @@ async def read_empresas(skip: int = 0, limit: int = 10,
 
 # Leer una empresa específica
 @router.get("/empresas/{empresa_id}", response_model=EmpresaResponseGet)
-async def read_empresa(empresa_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+async def read_empresa(
+    empresa_id: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
         select(Empresa)
         .options(joinedload(Empresa.categoria), joinedload(Empresa.municipio))
         .where(Empresa.id == empresa_id)
     )
+    if not can_view_deleted:
+        query = query.where(Empresa.deleted_at.is_(None))
+    result = await db.execute(query)
     empresa = result.scalars().first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
@@ -111,3 +124,19 @@ async def delete_empresa(empresa_id: int, db: AsyncSession = Depends(get_db)):
     empresa.deleted_at = datetime.utcnow()
     await db.commit()
     return {"message": "Empresa desactivada correctamente"}
+
+
+@router.patch("/empresas/{empresa_id}/restore")
+async def restore_empresa(
+    empresa_id: int,
+    _: object = Depends(require_permission(Permisos.RESTAURAR_REGISTROS_ELIMINADOS)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Empresa).where(Empresa.id == empresa_id))
+    empresa = result.scalars().first()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    empresa.deleted_at = None
+    await db.commit()
+    return {"message": "Empresa restaurada correctamente"}
