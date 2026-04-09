@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from seeders.seed_permisos import Permisos
+from typing import Optional
 import os
 
 from api.models import models
@@ -20,7 +21,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60)  # 1 
 
 # Configuración de bcrypt para encriptar contraseñas
 pwd_context = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/signin")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/signin", auto_error=False)
 
 router = APIRouter()
 
@@ -159,12 +160,14 @@ async def create_usuario(usuario: UsuarioRegister, db: AsyncSession = Depends(co
     }
 
 # Función para verificar el token y obtener el usuario actual
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(conexion.get_db)):
+async def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: AsyncSession = Depends(conexion.get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
+        detail="No autenticado. Inicia sesión para continuar.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if not token:
+        raise credentials_exception
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         correo: str = payload.get("sub")
