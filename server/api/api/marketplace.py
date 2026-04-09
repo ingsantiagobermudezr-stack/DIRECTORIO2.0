@@ -13,6 +13,8 @@ from api.api.auth import can_view_deleted_records, require_permission, get_curre
 from api.api.notificaciones import create_business_notification
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
+from pathlib import Path
+from fastapi.responses import FileResponse
 
 router = APIRouter()
 
@@ -399,3 +401,25 @@ async def track_marketplace_click(
     )
 
     return {"message": "Click registrado", "id_marketplace": id_marketplace}
+
+@router.get('/marketplace/{id_marketplace}/{url}')
+async def get_marketplace_images(
+    id_marketplace: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Endpoint para servir las imágenes del marketplace"""
+    result = await db.execute(
+        select(ImagenMarketplace).where(ImagenMarketplace.id_marketplace == id_marketplace)
+    )
+    imagenes = result.scalars().all()
+    if not imagenes:
+        raise HTTPException(status_code=404, detail="No se encontraron imágenes para este producto")
+
+    # Para simplicidad, servimos la primera imagen encontrada
+    imagen_url = imagenes[0].imagen_url
+    file_path = Path(get_upload_root()) / "marketplace" / Path(imagen_url).name
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Archivo de imagen no encontrado")
+
+    return FileResponse(file_path)

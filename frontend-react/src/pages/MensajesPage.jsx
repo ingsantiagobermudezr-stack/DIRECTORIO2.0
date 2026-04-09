@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DataTable } from "../components/common/DataTable";
 import { Loading } from "../components/common/Loading";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -8,10 +9,12 @@ import { PermissionGate } from "../components/common/PermissionGate";
 
 export function MensajesPage() {
   const { pushToast } = useToast();
-  const [marketplaceFiltro, setMarketplaceFiltro] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialMarketplaceId = searchParams.get("id_marketplace") || "";
+  const [marketplaceFiltro, setMarketplaceFiltro] = useState(initialMarketplaceId);
   const [mensajeDetalle, setMensajeDetalle] = useState(null);
   const [editForm, setEditForm] = useState({ id: "", mensaje: "" });
-  const [form, setForm] = useState({ id_marketplace: "", id_usuario_creador_chat: "", id_usuario_enviador_mensaje: "", mensaje: "" });
+  const [form, setForm] = useState({ id_marketplace: initialMarketplaceId, id_usuario_creador_chat: "", id_usuario_enviador_mensaje: "", mensaje: "" });
   const [idMensajeArchivo, setIdMensajeArchivo] = useState("");
   const [archivo, setArchivo] = useState(null);
 

@@ -19,19 +19,19 @@ import {
 import { usePermissions } from "../../context/PermissionsContext";
 
 const navItems = [
-  { to: "/", label: "Resumen", icon: faChartLine },
-  { to: "/empresas", label: "Empresas", icon: faBuilding },
-  { to: "/marketplace", label: "Marketplace", icon: faStore },
-  { to: "/favoritos", label: "Favoritos", icon: faHeart },
-  { to: "/busqueda", label: "Búsqueda", icon: faMagnifyingGlass },
-  { to: "/mensajes", label: "Mensajes", icon: faComments },
-  { to: "/reviews", label: "Reviews", icon: faStar },
-  { to: "/comprobantes", label: "Comprobantes", icon: faReceipt },
-  { to: "/reportes", label: "Reportes", icon: faChartPie, anyPerms: ["ver_reportes"] },
-  { to: "/publicidades", label: "Publicidades", icon: faBullhorn },
-  { to: "/admin-live", label: "Admin Live", icon: faTowerBroadcast, adminOnly: true },
-  { to: "/notificaciones", label: "Notificaciones", icon: faBell },
-  { to: "/perfil", label: "Mi perfil", icon: faUser },
+  { to: "/admin", label: "Resumen", icon: faChartLine },
+  { to: "/admin/empresas", label: "Empresas", icon: faBuilding },
+  { to: "/admin/marketplace", label: "Marketplace", icon: faStore },
+  { to: "/admin/favoritos", label: "Favoritos", icon: faHeart },
+  { to: "/admin/busqueda", label: "Búsqueda", icon: faMagnifyingGlass },
+  { to: "/admin/mensajes", label: "Mensajes", icon: faComments },
+  { to: "/admin/reviews", label: "Reviews", icon: faStar },
+  { to: "/admin/comprobantes", label: "Comprobantes", icon: faReceipt },
+  { to: "/admin/reportes", label: "Reportes", icon: faChartPie, anyPerms: ["ver_reportes"] },
+  { to: "/admin/publicidades", label: "Publicidades", icon: faBullhorn },
+  { to: "/admin/admin-live", label: "Admin Live", icon: faTowerBroadcast, adminOnly: true },
+  { to: "/admin/notificaciones", label: "Notificaciones", icon: faBell },
+  { to: "/admin/perfil", label: "Mi perfil", icon: faUser },
 ];
 
 export function Sidebar() {
@@ -50,7 +50,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-72 border-r border-slate-200 bg-white/80 p-6 backdrop-blur lg:block">
       <h1 className="text-xl font-semibold text-slate-900">Directorio 2.0</h1>
-      <p className="mt-1 text-sm text-slate-500">Panel operativo frontend</p>
+      <p className="mt-1 text-sm text-slate-500">Panel administrativo</p>
       <nav className="mt-8 space-y-2">
         {visibleItems.map((item) => (
           <NavLink

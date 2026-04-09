@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { DataTable } from "../components/common/DataTable";
 import { Loading } from "../components/common/Loading";
 import { EmptyState } from "../components/common/EmptyState";
@@ -8,12 +8,13 @@ import { categoriasApi, catalogosApi, empresasApi, marketplaceApi } from "../ser
 import { useToast } from "../context/ToastContext";
 import { PermissionGate } from "../components/common/PermissionGate";
 
-export function MarketplacePage() {
+export function MarketplacePage({ readOnly = false }) {
   const { pushToast } = useToast();
   const [searchParams] = useSearchParams();
+  const initialEmpresaId = searchParams.get("id_empresa") || "";
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [filtros, setFiltros] = useState({
-    id_empresa: "",
+    id_empresa: initialEmpresaId,
     id_categoria: "",
     id_estado: "",
     precio_min: "",
@@ -47,7 +48,7 @@ export function MarketplacePage() {
       ordenar: filtros.ordenar || "fecha_publicacion",
     };
 
-    const { data } = filtros.solo_mis_productos
+    const { data } = !readOnly && filtros.solo_mis_productos
       ? await marketplaceApi.misProductos(params)
       : await marketplaceApi.list(params);
 
@@ -55,6 +56,10 @@ export function MarketplacePage() {
   }, `${search}-${JSON.stringify(filtros)}`);
 
   const empresas = useAsyncData(async () => {
+    if (readOnly) {
+      return (await empresasApi.list({ limit: 200 })).data;
+    }
+
     try {
       return (await empresasApi.misEmpresas({ limit: 200 })).data;
     } catch {
@@ -169,6 +174,9 @@ export function MarketplacePage() {
     <section className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900">Marketplace</h3>
+        {readOnly ? (
+          <p className="mt-1 text-sm text-slate-600">Explora articulos de empresas publicadas. Para chatear con vendedores, inicia sesion.</p>
+        ) : null}
         <div className="mt-3 flex gap-2">
           <input className="w-full rounded-xl border border-slate-300 px-3 py-2" placeholder="Buscar producto" value={search} onChange={(e) => setSearch(e.target.value)} />
           <button className="rounded-xl bg-slate-900 px-4 py-2 text-white" onClick={marketplace.reload}>Refrescar</button>
@@ -199,16 +207,21 @@ export function MarketplacePage() {
           </select>
           <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio mínimo" type="number" value={filtros.precio_min} onChange={(e) => setFiltros((prev) => ({ ...prev, precio_min: e.target.value }))} />
           <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio máximo" type="number" value={filtros.precio_max} onChange={(e) => setFiltros((prev) => ({ ...prev, precio_max: e.target.value }))} />
-          <label className="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 md:col-span-2">
-            <input type="checkbox" checked={filtros.solo_mis_productos} onChange={(e) => setFiltros((prev) => ({ ...prev, solo_mis_productos: e.target.checked }))} />
-            Mostrar solo mis productos
-          </label>
+          {!readOnly ? (
+            <label className="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 md:col-span-2">
+              <input type="checkbox" checked={filtros.solo_mis_productos} onChange={(e) => setFiltros((prev) => ({ ...prev, solo_mis_productos: e.target.checked }))} />
+              Mostrar solo mis productos
+            </label>
+          ) : null}
         </div>
       </div>
 
       {marketplace.loading ? <Loading /> : null}
       {!marketplace.loading && (marketplace.data || []).length === 0 ? (
-        <EmptyState title="Sin productos" description="Publica el primer producto del marketplace." />
+        <EmptyState
+          title="Sin productos"
+          description={readOnly ? "No hay articulos disponibles para los filtros seleccionados." : "Publica el primer producto del marketplace."}
+        />
       ) : null}
       {!marketplace.loading && (marketplace.data || []).length > 0 ? (
         <DataTable
@@ -228,9 +241,11 @@ export function MarketplacePage() {
                   <button className="rounded-lg bg-indigo-600 px-2 py-1 text-xs font-semibold text-white" onClick={() => registrarClick(row.id)}>
                     Click
                   </button>
-                  <button className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white" onClick={() => eliminarProducto(row.id)}>
-                    Eliminar
-                  </button>
+                  {!readOnly ? (
+                    <button className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white" onClick={() => eliminarProducto(row.id)}>
+                      Eliminar
+                    </button>
+                  ) : null}
                 </div>
               ),
             },
@@ -244,96 +259,111 @@ export function MarketplacePage() {
           <h3 className="text-lg font-semibold text-slate-900">Detalle producto #{productoDetalle.id}</h3>
           <p className="mt-1 text-sm text-slate-600">{productoDetalle.nombre} | {productoDetalle.descripcion}</p>
           <p className="mt-1 text-xs text-slate-500">Precio: {productoDetalle.precio} | Stock: {productoDetalle.stock}</p>
+          {readOnly ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p className="text-sm font-medium text-teal-700">Inicia sesion para usar chat, favoritos y gestiones de compra.</p>
+              <Link
+                to={`/login?next=${encodeURIComponent(`/admin/mensajes?id_marketplace=${productoDetalle.id}`)}`}
+                className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
+              >
+                Iniciar sesion para chatear
+              </Link>
+            </div>
+          ) : null}
         </article>
       ) : null}
 
-      <PermissionGate
-        anyOf={["modificar_marketplace"]}
-        fallback={
-          <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
-            No tienes permiso `modificar_marketplace` para editar, eliminar o subir imágenes.
-          </article>
-        }
-      >
-        <form onSubmit={actualizarProducto} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-          <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Editar producto</h3>
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="ID producto" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} required />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={editForm.nombre} onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Descripción" value={editForm.descripcion} onChange={(e) => setEditForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio" type="number" min="0" value={editForm.precio} onChange={(e) => setEditForm((prev) => ({ ...prev, precio: e.target.value }))} required />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Stock" type="number" min="0" value={editForm.stock} onChange={(e) => setEditForm((prev) => ({ ...prev, stock: e.target.value }))} required />
+      {!readOnly ? (
+        <>
+          <PermissionGate
+            anyOf={["modificar_marketplace"]}
+            fallback={
+              <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
+                No tienes permiso `modificar_marketplace` para editar, eliminar o subir imágenes.
+              </article>
+            }
+          >
+            <form onSubmit={actualizarProducto} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
+              <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Editar producto</h3>
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="ID producto" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} required />
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={editForm.nombre} onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Descripción" value={editForm.descripcion} onChange={(e) => setEditForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio" type="number" min="0" value={editForm.precio} onChange={(e) => setEditForm((prev) => ({ ...prev, precio: e.target.value }))} required />
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Stock" type="number" min="0" value={editForm.stock} onChange={(e) => setEditForm((prev) => ({ ...prev, stock: e.target.value }))} required />
 
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_empresa} onChange={(e) => setEditForm((prev) => ({ ...prev, id_empresa: e.target.value }))} required>
-            <option value="">Selecciona empresa</option>
-            {(empresas.data || []).map((empresa) => (
-              <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-            ))}
-          </select>
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_categoria} onChange={(e) => setEditForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
-            <option value="">Selecciona categoría</option>
-            {(categorias.data || []).map((categoria) => (
-              <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
-            ))}
-          </select>
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_estado} onChange={(e) => setEditForm((prev) => ({ ...prev, id_estado: e.target.value }))}>
-            <option value="">Selecciona estado</option>
-            {(estados.data || []).map((estado) => (
-              <option key={estado.id} value={estado.id}>{estado.nombre}</option>
-            ))}
-          </select>
+              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_empresa} onChange={(e) => setEditForm((prev) => ({ ...prev, id_empresa: e.target.value }))} required>
+                <option value="">Selecciona empresa</option>
+                {(empresas.data || []).map((empresa) => (
+                  <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                ))}
+              </select>
+              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_categoria} onChange={(e) => setEditForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
+                <option value="">Selecciona categoría</option>
+                {(categorias.data || []).map((categoria) => (
+                  <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
+                ))}
+              </select>
+              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_estado} onChange={(e) => setEditForm((prev) => ({ ...prev, id_estado: e.target.value }))}>
+                <option value="">Selecciona estado</option>
+                {(estados.data || []).map((estado) => (
+                  <option key={estado.id} value={estado.id}>{estado.nombre}</option>
+                ))}
+              </select>
 
-          <button className="md:col-span-2 rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white">Guardar cambios</button>
-        </form>
+              <button className="md:col-span-2 rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white">Guardar cambios</button>
+            </form>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">Subir imágenes</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="ID producto" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} />
-            <input className="rounded-xl border border-slate-300 px-3 py-2" type="file" multiple onChange={(e) => setImagenesArchivos(Array.from(e.target.files || []))} />
-            <button className="rounded-xl bg-teal-600 px-4 py-2 text-white" onClick={subirImagenes}>Subir imágenes</button>
-          </div>
-        </div>
-      </PermissionGate>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900">Subir imágenes</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="ID producto" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} />
+                <input className="rounded-xl border border-slate-300 px-3 py-2" type="file" multiple onChange={(e) => setImagenesArchivos(Array.from(e.target.files || []))} />
+                <button className="rounded-xl bg-teal-600 px-4 py-2 text-white" onClick={subirImagenes}>Subir imágenes</button>
+              </div>
+            </div>
+          </PermissionGate>
 
-      <PermissionGate
-        anyOf={["crear_marketplace"]}
-        fallback={
-          <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
-            No tienes permiso `crear_marketplace` para publicar productos.
-          </article>
-        }
-      >
-        <form onSubmit={crearProducto} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-          <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Crear producto</h3>
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={form.nombre} onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio" type="number" min="0" value={form.precio} onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))} required />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Stock" type="number" min="0" value={form.stock} onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))} required />
+          <PermissionGate
+            anyOf={["crear_marketplace"]}
+            fallback={
+              <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
+                No tienes permiso `crear_marketplace` para publicar productos.
+              </article>
+            }
+          >
+            <form onSubmit={crearProducto} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
+              <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Crear producto</h3>
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={form.nombre} onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio" type="number" min="0" value={form.precio} onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))} required />
+              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Stock" type="number" min="0" value={form.stock} onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))} required />
 
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_empresa} onChange={(e) => setForm((prev) => ({ ...prev, id_empresa: e.target.value }))} required>
-            <option value="">Selecciona empresa</option>
-            {(empresas.data || []).map((empresa) => (
-              <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-            ))}
-          </select>
+              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_empresa} onChange={(e) => setForm((prev) => ({ ...prev, id_empresa: e.target.value }))} required>
+                <option value="">Selecciona empresa</option>
+                {(empresas.data || []).map((empresa) => (
+                  <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                ))}
+              </select>
 
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_categoria} onChange={(e) => setForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
-            <option value="">Selecciona categoría</option>
-            {(categorias.data || []).map((categoria) => (
-              <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
-            ))}
-          </select>
+              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_categoria} onChange={(e) => setForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
+                <option value="">Selecciona categoría</option>
+                {(categorias.data || []).map((categoria) => (
+                  <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
+                ))}
+              </select>
 
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_estado} onChange={(e) => setForm((prev) => ({ ...prev, id_estado: e.target.value }))}>
-            <option value="">Selecciona estado</option>
-            {(estados.data || []).map((estado) => (
-              <option key={estado.id} value={estado.id}>{estado.nombre}</option>
-            ))}
-          </select>
+              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_estado} onChange={(e) => setForm((prev) => ({ ...prev, id_estado: e.target.value }))}>
+                <option value="">Selecciona estado</option>
+                {(estados.data || []).map((estado) => (
+                  <option key={estado.id} value={estado.id}>{estado.nombre}</option>
+                ))}
+              </select>
 
-          <button className="md:col-span-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white">Crear producto</button>
-        </form>
-      </PermissionGate>
+              <button className="md:col-span-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white">Crear producto</button>
+            </form>
+          </PermissionGate>
+        </>
+      ) : null}
     </section>
   );
 }

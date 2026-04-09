@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { APP_NAME } from "../config/env";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signin, signup } = useAuth();
   const { pushToast } = useToast();
 
@@ -33,8 +34,10 @@ export function LoginPage() {
       } else {
         await signin({ username: form.username, password: form.password });
       }
+      const nextPath = searchParams.get("next");
+      const safeNextPath = nextPath?.startsWith("/") ? nextPath : "/admin";
       pushToast({ title: "Sesión iniciada", message: "Bienvenido al panel", type: "success" });
-      navigate("/");
+      navigate(safeNextPath);
     } catch (error) {
       pushToast({
         title: "Error",

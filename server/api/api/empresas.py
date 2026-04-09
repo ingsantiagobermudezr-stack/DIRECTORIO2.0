@@ -12,6 +12,8 @@ from api.db.conexion import get_db
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional, is_admin_user
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
+from pathlib import Path
+from fastapi.responses import FileResponse
 
 router = APIRouter()
 
@@ -269,3 +271,30 @@ async def upload_logo_empresa(
         "empresa_id": empresa.id,
         "logo_url": empresa.logo_url,
     }
+
+@router.get("/empresas/{empresa_id}/logo")
+async def get_logo_empresa(
+    empresa_id: int,
+    can_view_deleted: bool = Depends(can_view_deleted_records),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retorna el archivo del logo de la empresa."""
+
+    query = select(Empresa.logo_url).where(Empresa.id == empresa_id)
+    if not can_view_deleted:
+        query = query.where(Empresa.deleted_at.is_(None))
+
+    result = await db.execute(query)
+    logo_url = result.scalars().first()
+
+    if not logo_url:
+        raise HTTPException(status_code=404, detail="Empresa o logo no encontrado")
+
+    # logo_url suele venir como URL pública, tomamos solo el nombre del archivo
+    file_name = Path(logo_url).name
+    file_path = Path(get_upload_root()) / "empresas" / file_name
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Archivo de logo no encontrado")
+
+    return FileResponse(path=str(file_path), filename=file_name)
