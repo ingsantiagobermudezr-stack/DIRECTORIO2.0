@@ -31,7 +31,6 @@ def hash_password(password: str):
 
 # Función para verificar la contraseña
 def verify_password(plain_password: str, hashed_password: str):
-    print(f'Verificando contraseña: {plain_password} contra hash: {hashed_password}')
     return pwd_context.verify(plain_password, hashed_password)
 
 # Función para crear tokens JWT
