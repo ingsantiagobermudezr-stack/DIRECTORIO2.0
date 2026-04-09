@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from typing import Optional
 
 from api.schemas.schemas import EmpresaCreate, EmpresaResponse, EmpresaResponseGet
-from api.models.models import Empresa, Categoria, Municipio
+from api.models.models import Empresa, Categoria, Municipio, Review
 from api.db.conexion import get_db
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional
 from seeders.seed_permisos import Permisos
@@ -68,6 +68,7 @@ async def read_empresas(
     nombre: Optional[str] = Query(None),
     id_categoria: Optional[int] = Query(None),
     id_municipio: Optional[int] = Query(None),
+    rating_min: Optional[float] = Query(None, ge=0, le=5),
     search: Optional[str] = Query(None),
     ordenar: Optional[str] = Query("nombre", regex="^(nombre|rating)$"),
     can_view_deleted: bool = Depends(can_view_deleted_records),
@@ -79,12 +80,19 @@ async def read_empresas(
     - nombre: Filtro simple por nombre
     - id_categoria: Filtrar por categoría
     - id_municipio: Filtrar por municipio/ubicación
+    - rating_min: Filtrar por calificación promedio mínima (0-5)
     - ordenar: Ordenar por nombre (asc) o rating (desc)
     """
+    # Calcular promedio de calificación por empresa
+    avg_rating = select(
+        Review.id_empresa,
+        func.avg(Review.calificacion).label("avg_rating")
+    ).where(Review.deleted_at.is_(None)).group_by(Review.id_empresa).subquery()
+    
     query = select(Empresa).options(
         joinedload(Empresa.categoria),
         joinedload(Empresa.municipio)
-    )
+    ).outerjoin(avg_rating, Empresa.id == avg_rating.c.id_empresa)
 
     filters = []
     if not can_view_deleted:
@@ -105,13 +113,16 @@ async def read_empresas(
     
     if id_municipio:
         filters.append(Empresa.id_municipio == id_municipio)
+    
+    if rating_min is not None:
+        filters.append(func.coalesce(avg_rating.c.avg_rating, 0) >= rating_min)
 
     if filters:
         query = query.where(and_(*filters))
 
     # Ordenamiento
-    if ordenar == "nombre":
-        query = query.order_by(Empresa.nombre.asc())
+    if ordenar == "rating":
+        query = query.order_by(func.coalesce(avg_rating.c.avg_rating, 0).desc())
     else:
         query = query.order_by(Empresa.nombre.asc())
 

@@ -34,12 +34,14 @@
   - `nombre`: Filtro simple
   - `id_categoria`: Filtrar por categoría
   - `id_municipio`: Filtrar por ubicación geográfica
-  - `ordenar`: Por nombre o rating
+  - `rating_min`: Filtrar por calificación promedio mínima (0-5)
+  - `ordenar`: Por nombre o rating (descendente)
   - Paginación mejorada (1-100 items por página)
 - ✅ GET /empresas/usuario/mis-empresas - **NUEVO**
   - Obtener mis empresas como usuario creador
 - ✅ Lazy loading mejorado
 - ✅ Validaciones de integridad
+- ✅ Cálculo de promedio de rating desde tabla reviews
 
 ### ✅ SERVICIOS EXISTENTES Y COMPLETOS
 
@@ -196,7 +198,7 @@ POST /roles - Crear roles
 
 ### Priority 1 (Alta)
 - [ ] Endpoint para subir imágenes (empresas, marketplace)
-- [ ] Filtro por rating promedio en empresas
+- [x] ✅ **Filtro por rating promedio en empresas** - IMPLEMENTADO
 - [ ] Validación de permisos en frontend antes de intentar acciones
 - [ ] Cacheo de paises/departamentos/municipios
 - [x] ✅ **Sistema de Favoritos** - IMPLEMENTADO

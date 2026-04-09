@@ -146,8 +146,9 @@ Query:
   &nombre=Acme
   &id_categoria=1
   &id_municipio=1
+  &rating_min=3.5
   &search=acme
-  &ordenar=nombre
+  &ordenar=nombre|rating
 
 Response:
 [
@@ -545,7 +546,7 @@ Response: { "message": "Producto eliminado de favoritos" }
 ## 🚀 PRÓXIMAS MEJORAS SUGERIDAS
 
 1. **Upload de Imágenes**: Agregar endpoints para subir fotos (empresas, marketplace, publicidades)
-2. **Filtro de Rating**: Filtrar empresas por calificación promedio
+2. ✅ **Filtro de Rating**: Filtrar empresas por calificación promedio (parámetro `rating_min`)
 3. ✅ **Wishlist**: Agregar/eliminar favoritos (tabla `usuarios_favoritos` implementada)
 4. **Carrito de Compras**: Funcionalidad e-commerce básica
 5. **Notificaciones**: Sistema de notificaciones en tiempo real (WebSocket)
