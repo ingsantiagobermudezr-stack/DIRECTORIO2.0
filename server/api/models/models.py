@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Table, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from api.db.conexion import Base
@@ -107,6 +107,9 @@ class Usuario(Base):
     # Relación con Resultado para almacenar telemetría de búsqueda
     resultados = relationship("Resultado", back_populates="usuario", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="usuario", cascade="all, delete-orphan")
+    mensajes_creados_chat = relationship("Mensaje", back_populates="usuario_creador_chat", foreign_keys="Mensaje.id_usuario_creador_chat")
+    mensajes_enviados = relationship("Mensaje", back_populates="usuario_enviador_mensaje", foreign_keys="Mensaje.id_usuario_enviador_mensaje")
+    comprobantes_evaluados = relationship("Comprobante", back_populates="empleado_evaluador", foreign_keys="Comprobante.id_empleado_evaluador")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
 
 
@@ -217,10 +220,51 @@ class Marketplace(Base):
     id_categoria = Column(Integer, ForeignKey('categorias.id'), nullable=True)
 
     imagenes = relationship("ImagenMarketplace", back_populates="marketplace")
+    mensajes = relationship("Mensaje", back_populates="marketplace", cascade="all, delete-orphan")
     estado = relationship("EstadoMarketplace", back_populates="marketplaces")
     empresa = relationship("Empresa", back_populates="marketplaces")
     categoria = relationship("Categoria", back_populates="marketplaces")
     deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
+
+
+class Mensaje(Base):
+    __tablename__ = 'mensajes'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_marketplace = Column(Integer, ForeignKey('marketplaces.id'), nullable=False)
+    id_usuario_creador_chat = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
+    id_usuario_enviador_mensaje = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
+    mensaje = Column(Text, nullable=False)
+    fecha_hora = Column(DateTime, default=datetime.utcnow)
+
+    marketplace = relationship("Marketplace", back_populates="mensajes")
+    usuario_creador_chat = relationship("Usuario", back_populates="mensajes_creados_chat", foreign_keys=[id_usuario_creador_chat])
+    usuario_enviador_mensaje = relationship("Usuario", back_populates="mensajes_enviados", foreign_keys=[id_usuario_enviador_mensaje])
+    archivos = relationship("ArchivoMensaje", back_populates="mensaje_rel", cascade="all, delete-orphan")
+
+
+class ArchivoMensaje(Base):
+    __tablename__ = 'archivos_mensajes'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_mensaje = Column(Integer, ForeignKey('mensajes.id'), nullable=False)
+    url_imagen = Column(Text, nullable=False)
+
+    mensaje_rel = relationship("Mensaje", back_populates="archivos")
+    comprobantes = relationship("Comprobante", back_populates="archivo", cascade="all, delete-orphan")
+
+
+class Comprobante(Base):
+    __tablename__ = 'comprobantes'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_archivo = Column(Integer, ForeignKey('archivos_mensajes.id'), nullable=False)
+    id_empleado_evaluador = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
+    recibo_valido = Column(Boolean, nullable=False)
+    cantidad_recibida = Column(Float, nullable=False)
+
+    archivo = relationship("ArchivoMensaje", back_populates="comprobantes")
+    empleado_evaluador = relationship("Usuario", back_populates="comprobantes_evaluados", foreign_keys=[id_empleado_evaluador])
 
 
 # Modelo para Review, que permite valoraciones y comentarios de usuarios sobre las empresas
@@ -254,4 +298,4 @@ class Resultado(Base):
 
     # Relación con Usuario
     usuario = relationship("Usuario", back_populates="resultados")
-    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete
+    deleted_at = Column(DateTime, nullable=True)  # Campo para soft delete  
