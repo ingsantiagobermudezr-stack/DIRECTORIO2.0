@@ -48,11 +48,13 @@ if __name__ == "__main__":
     from categorias import seed_categorias
     from departamentos import seed_departamentos
     from estados_marketplace import seed_estados_marketplace
+    from estados_flujo import seed_estados_flujo
     from seed_admin_user import seed_admin_user
     from seed_roles import seed_roles
     from paises import seed_paises
     from municipios import seed_municipios
     from seed_permisos import seed_permisos
+    from tipos_evento import seed_tipos_evento
     from tipos_anuncio import seed_tipos_anuncio
 
     async def main():
@@ -61,6 +63,8 @@ if __name__ == "__main__":
         await seed_municipios(run_sql_statements)
         await seed_categorias(run_sql_statements)
         await seed_estados_marketplace(run_sql_statements)
+        await seed_estados_flujo(run_sql_statements)
+        await seed_tipos_evento(run_sql_statements)
         await seed_tipos_anuncio(run_sql_statements)
         await seed_roles(run_sql_statements)
         await seed_admin_user(run_sql_statements)

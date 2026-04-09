@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Comprobante, ArchivoMensaje, Mensaje
+from api.models.models import Comprobante, ArchivoMensaje, Mensaje, ESTADOS_FLUJO_POR_CLAVE
 from api.schemas.schemas import ComprobanteCreate, ComprobanteResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user, is_admin_user
 from api.api.notificaciones import create_business_notification
@@ -67,7 +67,13 @@ async def _notificar_estado_comprobante(
 
 @router.post("/comprobantes/", response_model=ComprobanteResponse, status_code=201)
 async def create_comprobante(payload: ComprobanteCreate, db: AsyncSession = Depends(get_db)):
-    db_item = Comprobante(**payload.model_dump(), estado="pendiente", fecha_resolucion=None)
+    estado_clave = "pendiente"
+    db_item = Comprobante(
+        **payload.model_dump(),
+        estado=estado_clave,
+        id_estado_flujo=ESTADOS_FLUJO_POR_CLAVE[estado_clave],
+        fecha_resolucion=None,
+    )
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
@@ -178,12 +184,14 @@ async def registrar_comprobante_desde_archivo(
     db.add(archivo_item)
     await db.flush()
 
+    estado_clave = "pendiente"
     comprobante = Comprobante(
         id_archivo=archivo_item.id,
         id_empleado_evaluador=id_empleado_evaluador,
         recibo_valido=recibo_valido,
         cantidad_recibida=cantidad_recibida,
-        estado="pendiente",
+        estado=estado_clave,
+        id_estado_flujo=ESTADOS_FLUJO_POR_CLAVE[estado_clave],
         fecha_resolucion=None,
     )
     db.add(comprobante)
@@ -227,6 +235,7 @@ async def aprobar_comprobante(
         raise HTTPException(status_code=409, detail="El comprobante ya fue resuelto")
 
     comprobante.estado = "aprobado"
+    comprobante.id_estado_flujo = ESTADOS_FLUJO_POR_CLAVE["aprobado"]
     comprobante.recibo_valido = True
     comprobante.fecha_resolucion = datetime.utcnow()
     await db.commit()
@@ -262,6 +271,7 @@ async def rechazar_comprobante(
         raise HTTPException(status_code=409, detail="El comprobante ya fue resuelto")
 
     comprobante.estado = "rechazado"
+    comprobante.id_estado_flujo = ESTADOS_FLUJO_POR_CLAVE["rechazado"]
     comprobante.recibo_valido = False
     comprobante.fecha_resolucion = datetime.utcnow()
     await db.commit()

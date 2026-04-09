@@ -154,6 +154,50 @@ class TipoAnuncio(Base):
     publicidades = relationship("Publicidad", back_populates="tipo_anuncio")
 
 
+class EstadoFlujo(Base):
+    __tablename__ = 'estados_flujo'
+
+    id = Column(Integer, primary_key=True, index=True)
+    clave = Column(String(50), nullable=False, unique=True)
+    nombre = Column(String(50), nullable=False)
+    descripcion = Column(Text, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    comprobantes = relationship("Comprobante", back_populates="estado_flujo")
+
+
+ESTADOS_FLUJO_POR_CLAVE = {
+    "pendiente": 1,
+    "aprobado": 2,
+    "rechazado": 3,
+    "en_revision": 4,
+    "cancelado": 5,
+}
+
+
+TIPOS_EVENTO_POR_CLAVE = {
+    "vista": 1,
+    "click": 2,
+    "new_message": 3,
+    "new_review": 4,
+    "favorite_price_change": 5,
+    "comprobante_aprobado": 6,
+    "comprobante_rechazado": 7,
+}
+
+
+class TipoEvento(Base):
+    __tablename__ = 'tipos_evento'
+
+    id = Column(Integer, primary_key=True, index=True)
+    clave = Column(String(50), nullable=False, unique=True)
+    nombre = Column(String(50), nullable=False)
+    descripcion = Column(Text, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    eventos_marketplace = relationship("EventoMarketplace", back_populates="tipo_evento_rel")
+
+
 # Modelo de Publicidad para gestionar anuncios de empresas
 class Publicidad(Base):
     __tablename__ = 'publicidades'
@@ -238,7 +282,8 @@ class EventoMarketplace(Base):
     id = Column(Integer, primary_key=True, index=True)
     id_marketplace = Column(Integer, ForeignKey('marketplaces.id'), nullable=False)
     id_usuario = Column(Integer, ForeignKey('usuarios.id'), nullable=True)
-    tipo_evento = Column(String(20), nullable=False)  # vista | click
+    id_tipo_evento = Column(Integer, ForeignKey('tipos_evento.id'), nullable=False)
+    tipo_evento = Column(String(50), nullable=False)
     fecha_hora = Column(DateTime, default=datetime.utcnow)
     ip_origen = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
@@ -246,6 +291,7 @@ class EventoMarketplace(Base):
 
     marketplace = relationship("Marketplace", back_populates="eventos")
     usuario = relationship("Usuario", back_populates="eventos_marketplace")
+    tipo_evento_rel = relationship("TipoEvento", back_populates="eventos_marketplace")
 
 
 class Mensaje(Base):
@@ -285,6 +331,7 @@ class Comprobante(Base):
     id_empleado_evaluador = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
     recibo_valido = Column(Boolean, nullable=False)
     cantidad_recibida = Column(Float, nullable=False)
+    id_estado_flujo = Column(Integer, ForeignKey('estados_flujo.id'), nullable=False)
     estado = Column(String(20), nullable=False, default='pendiente')
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
     fecha_resolucion = Column(DateTime, nullable=True)
@@ -292,6 +339,7 @@ class Comprobante(Base):
 
     archivo = relationship("ArchivoMensaje", back_populates="comprobantes")
     empleado_evaluador = relationship("Usuario", back_populates="comprobantes_evaluados", foreign_keys=[id_empleado_evaluador])
+    estado_flujo = relationship("EstadoFlujo", back_populates="comprobantes")
 
 
 # Modelo para Review, que permite valoraciones y comentarios de usuarios sobre las empresas

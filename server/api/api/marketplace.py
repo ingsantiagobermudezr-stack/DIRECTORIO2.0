@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from api.db.conexion import get_db
-from api.models.models import Marketplace, Empresa, ImagenMarketplace, EstadoMarketplace, UsuarioFavorito, EventoMarketplace
+from api.models.models import Marketplace, Empresa, ImagenMarketplace, EstadoMarketplace, UsuarioFavorito, EventoMarketplace, TIPOS_EVENTO_POR_CLAVE
 from api.schemas.schemas import MarketplaceCreate, MarketplaceResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional, is_admin_user
 from api.api.notificaciones import create_business_notification
@@ -36,6 +36,7 @@ async def _registrar_evento_marketplace(
         id_marketplace=item.id,
         id_usuario=getattr(current_user, "id", None) if current_user else None,
         tipo_evento=tipo_evento,
+        id_tipo_evento=TIPOS_EVENTO_POR_CLAVE[tipo_evento],
         ip_origen=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )

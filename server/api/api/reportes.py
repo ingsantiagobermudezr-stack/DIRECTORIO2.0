@@ -3,10 +3,9 @@ from datetime import datetime, time
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, case, cast, func, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from api.api.auth import require_permission
 from api.db.conexion import get_db
-from api.models.models import ArchivoMensaje, Comprobante, Empresa, EventoMarketplace, Marketplace, Mensaje, Resultado, Review, Usuario
+from api.models.models import ArchivoMensaje, Comprobante, Empresa, EventoMarketplace, EstadoFlujo, Marketplace, Mensaje, Resultado, Review, TipoEvento, Usuario
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -167,14 +166,15 @@ async def reporte_tasa_aprobacion_evaluadores(
             Usuario.nombre.label("nombre"),
             Usuario.apellido.label("apellido"),
             func.count(Comprobante.id).label("total"),
-            func.sum(case((Comprobante.estado == "aprobado", 1), else_=0)).label("aprobados"),
-            func.sum(case((Comprobante.estado == "rechazado", 1), else_=0)).label("rechazados"),
-            func.sum(case((Comprobante.estado == "pendiente", 1), else_=0)).label("pendientes"),
+            func.sum(case((EstadoFlujo.clave == "aprobado", 1), else_=0)).label("aprobados"),
+            func.sum(case((EstadoFlujo.clave == "rechazado", 1), else_=0)).label("rechazados"),
+            func.sum(case((EstadoFlujo.clave == "pendiente", 1), else_=0)).label("pendientes"),
         )
         .join(Comprobante, Comprobante.id_empleado_evaluador == Usuario.id)
+        .join(EstadoFlujo, EstadoFlujo.id == Comprobante.id_estado_flujo)
         .where(and_(*filters))
         .group_by(Usuario.id, Usuario.nombre, Usuario.apellido)
-        .order_by(func.sum(case((Comprobante.estado == "aprobado", 1), else_=0)).desc())
+        .order_by(func.sum(case((EstadoFlujo.clave == "aprobado", 1), else_=0)).desc())
         .limit(limit)
     )
 
@@ -328,14 +328,18 @@ async def reporte_funnel_comercial(
     if hasta is not None:
         evento_filters.append(EventoMarketplace.fecha_hora <= hasta)
 
-    vistas_q = select(func.count(EventoMarketplace.id)).where(
-        and_(*evento_filters, EventoMarketplace.tipo_evento == "vista")
+    vistas_q = (
+        select(func.count(EventoMarketplace.id))
+        .join(TipoEvento, TipoEvento.id == EventoMarketplace.id_tipo_evento)
+        .where(and_(*evento_filters, TipoEvento.clave == "vista"))
     )
     vistas_result = await db.execute(vistas_q)
     productos_vistos = int(vistas_result.scalar() or 0)
 
-    clicks_q = select(func.count(EventoMarketplace.id)).where(
-        and_(*evento_filters, EventoMarketplace.tipo_evento == "click")
+    clicks_q = (
+        select(func.count(EventoMarketplace.id))
+        .join(TipoEvento, TipoEvento.id == EventoMarketplace.id_tipo_evento)
+        .where(and_(*evento_filters, TipoEvento.clave == "click"))
     )
     clicks_result = await db.execute(clicks_q)
     clics_producto = int(clicks_result.scalar() or 0)
