@@ -67,6 +67,16 @@ def _has_permission(current_user: Optional[models.Usuario], permission_key: str)
     _, permisos = _extract_auth_context(current_user)
     return permission_key in permisos
 
+
+def is_admin_user(current_user: Optional[models.Usuario]) -> bool:
+    """Admin de negocio: rol admin + permiso crítico de administración."""
+    if not current_user:
+        return False
+
+    rol_nombre, permisos = _extract_auth_context(current_user)
+    critical_permission = Permisos.MODIFICAR_ROLES.value
+    return str(rol_nombre or "").lower() == "admin" and critical_permission in permisos
+
 async def authenticate_user(db: AsyncSession, correo: str, password: str):
     user = await get_user(db, correo)
     if not user:
@@ -209,8 +219,7 @@ async def can_view_deleted_records(current_user: Optional[models.Usuario] = Depe
 
 
 async def require_admin(current_user: models.Usuario = Depends(get_current_user)):
-    # Regla hardcodeada solicitada: solo el usuario con ID=1 es admin.
-    if getattr(current_user, "id", None) == 1:
+    if is_admin_user(current_user):
         return current_user
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Se requieren privilegios de administrador")
 
