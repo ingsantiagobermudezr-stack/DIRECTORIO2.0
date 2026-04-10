@@ -227,9 +227,80 @@ export function MarketplacePage({ readOnly = false }) {
         <DataTable
           columns={[
             { key: "id", label: "ID" },
-            { key: "nombre", label: "Nombre" },
-            { key: "precio", label: "Precio" },
-            { key: "stock", label: "Stock" },
+            { 
+              key: "nombre", 
+              label: "Producto",
+              render: (row) => (
+                <div>
+                  <p className="font-semibold text-slate-900">{row.nombre}</p>
+                  {row.categoria?.nombre && (
+                    <span className="inline-block mt-1 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">
+                      {row.categoria.nombre}
+                    </span>
+                  )}
+                </div>
+              ),
+            },
+            { 
+              key: "precio", 
+              label: "Precio",
+              render: (row) => (
+                <span className="font-bold text-slate-900">
+                  {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(row.precio ?? 0)}
+                </span>
+              ),
+            },
+            { 
+              key: "stock", 
+              label: "Stock",
+              render: (row) => (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+                  row.stock === 0 ? "bg-red-100 text-red-700" : row.stock <= 5 ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
+                }`}>
+                  <div className={`h-2 w-2 rounded-full ${
+                    row.stock === 0 ? "bg-red-500" : row.stock <= 5 ? "bg-orange-500" : "bg-green-500"
+                  }`} />
+                  {Math.floor(row.stock ?? 0)}
+                </span>
+              ),
+            },
+            { 
+              key: "empresa", 
+              label: "Empresa",
+              render: (row) => (
+                <div className="max-w-[150px]">
+                  {row.empresa?.nombre ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-500 text-xs font-bold text-white">
+                          {row.empresa.nombre[0].toUpperCase()}
+                        </div>
+                        <p className="truncate text-xs font-medium text-slate-700">{row.empresa.nombre}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-500">-</p>
+                  )}
+                </div>
+              ),
+            },
+            { 
+              key: "estado", 
+              label: "Estado",
+              render: (row) => (
+                row.estado?.nombre ? (
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                    row.estado.nombre.toLowerCase().includes("sin stock") || row.estado.nombre.toLowerCase().includes("inactivo")
+                      ? "bg-red-50 text-red-700"
+                      : "bg-green-50 text-green-700"
+                  }`}>
+                    {row.estado.nombre}
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-500">-</span>
+                )
+              ),
+            },
             {
               key: "acciones",
               label: "Acciones",

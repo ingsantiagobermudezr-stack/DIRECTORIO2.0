@@ -78,7 +78,7 @@ async def create_empresa(
 @router.get("/empresas/", response_model=list[EmpresaResponseGet])
 async def read_empresas(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     nombre: Optional[str] = Query(None),
     id_categoria: Optional[int] = Query(None),
     id_municipio: Optional[int] = Query(None),
@@ -147,7 +147,7 @@ async def read_empresas(
 @router.get("/empresas/usuario/mis-empresas", response_model=list[EmpresaResponseGet])
 async def get_mis_empresas(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     current_user = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):

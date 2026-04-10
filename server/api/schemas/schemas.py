@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, model_validator
 from typing import Optional
 from datetime import datetime
 
@@ -18,9 +18,73 @@ class MarketplaceCreate(MarketplaceBase):
 class MarketplaceResponse(MarketplaceBase):
     """
     Respuesta del marketplace con detalles completos del producto/servicio
+    Incluye joins de empresa, categoría y estado
     """
     id: int
     fecha_publicacion: datetime
+    
+    # Joins opcionales
+    empresa: Optional[dict] = None
+    categoria: Optional[dict] = None
+    estado: Optional[dict] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def resolve_relationships(cls, data):
+        """Convierte objetos relacionales de SQLAlchemy a diccionarios"""
+        if hasattr(data, '__dict__'):
+            data = data.__dict__
+        
+        result = dict(data) if isinstance(data, dict) else {}
+        
+        # Resolver empresa
+        if 'empresa' in result and hasattr(result['empresa'], '__dict__'):
+            emp = result['empresa']
+            result['empresa'] = {
+                'id': getattr(emp, 'id', None),
+                'nombre': getattr(emp, 'nombre', None),
+                'correo': getattr(emp, 'correo', None),
+                'logo_url': getattr(emp, 'logo_url', None),
+                'municipio': None,
+                'categoria': None,
+            }
+            # Evita lazy-load en AsyncSession: solo usar relaciones ya cargadas.
+            emp_dict = getattr(emp, '__dict__', {}) if emp is not None else {}
+
+            # Resolver municipio si ya viene cargado
+            mun = emp_dict.get('municipio')
+            if mun:
+                result['empresa']['municipio'] = {
+                    'id': getattr(mun, 'id', None),
+                    'nombre': getattr(mun, 'nombre', None),
+                }
+
+            # Resolver categoría de la empresa si ya viene cargada
+            cat = emp_dict.get('categoria')
+            if cat:
+                result['empresa']['categoria'] = {
+                    'id': getattr(cat, 'id', None),
+                    'nombre': getattr(cat, 'nombre', None),
+                }
+        
+        # Resolver categoría del producto
+        if 'categoria' in result and hasattr(result['categoria'], '__dict__'):
+            cat = result['categoria']
+            result['categoria'] = {
+                'id': getattr(cat, 'id', None),
+                'nombre': getattr(cat, 'nombre', None),
+            }
+        
+        # Resolver estado
+        if 'estado' in result and hasattr(result['estado'], '__dict__'):
+            est = result['estado']
+            result['estado'] = {
+                'id': getattr(est, 'id', None),
+                'nombre': getattr(est, 'nombre', None),
+                'descripcion': getattr(est, 'descripcion', None),
+            }
+        
+        return result
 
     model_config = {"from_attributes": True}
 
@@ -221,6 +285,13 @@ class SigninResponse(BaseModel):
     id_usuario: int
     id_rol: Optional[int] = None
     permisos: Optional[list[str]] = None
+
+class PerfilUpdate(BaseModel):
+    """Esquema para que un usuario actualice su propio perfil"""
+    nombre: Optional[constr(min_length=1, max_length=100)] = None
+    apellido: Optional[constr(min_length=1, max_length=100)] = None
+    correo: Optional[EmailStr] = None
+    password: Optional[constr(min_length=8, max_length=128)] = None
 
 # Esquemas para Review
 class ReviewBase(BaseModel):

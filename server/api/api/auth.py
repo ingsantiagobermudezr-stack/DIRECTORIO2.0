@@ -12,7 +12,7 @@ import os
 
 from api.models import models
 from api.db import conexion
-from api.schemas.schemas import UsuarioRegister, SigninResponse
+from api.schemas.schemas import UsuarioRegister, SigninResponse, UsuarioResponse, PerfilUpdate
 
 # Configuración de seguridad
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")  # usar variable de entorno en producción
@@ -240,6 +240,65 @@ async def me_permisos(current_user: models.Usuario = Depends(get_current_user)):
     """Devuelve la lista de permisos asociados al rol del usuario autenticado."""
     _, permisos = _extract_auth_context(current_user)
     return {"permisos": permisos}
+
+
+@router.put("/me/perfil", response_model=UsuarioResponse)
+async def actualizar_mi_perfil(
+    perfil: PerfilUpdate,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(conexion.get_db),
+):
+    """
+    Permite a un usuario autenticado actualizar su propia información personal.
+    
+    Campos actualizables: nombre, apellido, correo, password.
+    El JWT NO se invalida al cambiar la contraseña (comportamiento estándar).
+    """
+    # Verificar si el correo ya está en uso por otro usuario
+    if perfil.correo and perfil.correo != current_user.correo:
+        result = await db.execute(
+            select(models.Usuario).where(models.Usuario.correo == perfil.correo)
+        )
+        existing_user = result.scalars().first()
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail="El correo ya está registrado por otro usuario"
+            )
+
+    # Actualizar campos
+    update_data = perfil.model_dump(exclude_unset=True)
+    
+    # Si hay contraseña nueva, hashearla
+    if "password" in update_data:
+        update_data["password"] = hash_password(update_data["password"])
+
+    for key, value in update_data.items():
+        setattr(current_user, key, value)
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    # Obtener datos completos del usuario actualizado
+    user_result = await db.execute(
+        select(models.Usuario)
+        .options(selectinload(models.Usuario.rol_obj).selectinload(models.Rol.permisos))
+        .where(models.Usuario.id == current_user.id)
+    )
+    user_completo = user_result.scalars().first()
+    
+    _, permisos = _extract_auth_context(user_completo)
+    
+    return {
+        "id": user_completo.id,
+        "nombre": user_completo.nombre,
+        "apellido": user_completo.apellido,
+        "correo": user_completo.correo,
+        "rol": getattr(user_completo.rol_obj, "nombre", None) if user_completo.rol_obj else None,
+        "id_rol": user_completo.id_rol,
+        "id_empresa": user_completo.id_empresa,
+    }
+
 
 # @router.get('/puede')
 # async def puede_tener_permiso(current_user: models.Usuario = Depends(require_permission(Permisos.CREAR_EMPRESA))):

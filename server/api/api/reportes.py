@@ -1,7 +1,7 @@
 from datetime import datetime, time
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, case, cast, func, select, String
+from sqlalchemy import and_, case, cast, func, Numeric, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.api.auth import require_permission
 from api.db.conexion import get_db
@@ -257,7 +257,6 @@ async def reporte_top_empresas_rating_reviews(
     desde: datetime | None = Query(default=None),
     hasta: datetime | None = Query(default=None),
     limit: int = Query(default=10, ge=1, le=100),
-    _: object = Depends(require_permission(Permisos.VER_REPORTES)),
     db: AsyncSession = Depends(get_db),
 ):
     """Top empresas por rating promedio y volumen de reviews."""
@@ -276,7 +275,7 @@ async def reporte_top_empresas_rating_reviews(
         select(
             Empresa.id.label("id_empresa"),
             Empresa.nombre.label("empresa"),
-            func.round(func.avg(Review.calificacion), 2).label("rating_promedio"),
+            func.round(cast(func.avg(Review.calificacion), Numeric), 2).label("rating_promedio"),
             func.count(Review.id).label("total_reviews"),
         )
         .join(Review, Review.id_empresa == Empresa.id)

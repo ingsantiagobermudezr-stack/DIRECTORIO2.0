@@ -22,8 +22,36 @@ body,
 }
 
 body {
-  @apply bg-slate-100 text-slate-800;
-  background-image: radial-gradient(circle at 10% 20%, rgba(45, 212, 191, 0.1), transparent 22%),
-    radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.16), transparent 28%),
-    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  @apply bg-slate-50 text-slate-800;
+  background-image: radial-gradient(circle at 10% 20%, rgba(255, 230, 0, 0.08), transparent 22%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.08), transparent 28%),
+    linear-gradient(180deg, #fefce8 0%, #fef9c3 30%, #f8fafc 100%);
+}
+
+/* Mercado Libre style card hover effects */
+.product-card {
+  @apply transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary-400 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary-500;
 }

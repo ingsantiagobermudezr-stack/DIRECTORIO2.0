@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
 import { AppShell } from "./components/layout/AppShell";
 import { PublicShell } from "./components/layout/PublicShell";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
@@ -18,18 +19,28 @@ import { NotificacionesPage } from "./pages/NotificacionesPage";
 import { PerfilPage } from "./pages/PerfilPage";
 import { PermissionGate } from "./components/common/PermissionGate";
 import { AdminLivePage } from "./pages/AdminLivePage";
-import { PublicEmpresaDetallePage } from "./pages/PublicEmpresaDetallePage";
+import { HomePage } from "./pages/HomePage";
+import { PublicMarketplacePage } from "./pages/PublicMarketplacePage";
+import { PublicEmpresaPage } from "./pages/PublicEmpresaPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { FavoritosPage as PublicFavoritosPage } from "./pages/PublicFavoritosPage";
+import { PublicPerfilPage } from "./pages/PublicPerfilPage";
 
 function App() {
   return (
     <>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        
+        {/* Public Pages - Mercado Libre Style */}
         <Route element={<PublicShell />}>
-          <Route path="/" element={<EmpresasPage readOnly />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/empresas" element={<EmpresasPage readOnly />} />
-          <Route path="/empresas/:empresaId" element={<PublicEmpresaDetallePage />} />
-          <Route path="/marketplace" element={<MarketplacePage readOnly />} />
+          <Route path="/empresa/:empresaId" element={<PublicEmpresaPage />} />
+          <Route path="/marketplace" element={<PublicMarketplacePage />} />
+          <Route path="/producto/:productId" element={<ProductDetailPage />} />
+          <Route path="/favoritos" element={<PublicFavoritosPage />} />
+          <Route path="/mi-perfil" element={<PublicPerfilPage />} />
         </Route>
         <Route
           path="/admin"
@@ -72,7 +83,18 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <ToastViewport />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
     </>
   );
 }

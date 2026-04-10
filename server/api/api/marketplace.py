@@ -111,7 +111,11 @@ async def get_marketplace(
     - id_estado: Filtrar por estado
     - ordenar: Ordenar por fecha_publicacion (desc), precio (asc) o nombre (asc)
     """
-    query = select(Marketplace).options(joinedload(Marketplace.empresa), joinedload(Marketplace.categoria))
+    query = select(Marketplace).options(
+        joinedload(Marketplace.empresa),
+        joinedload(Marketplace.categoria),
+        joinedload(Marketplace.estado),
+    )
     
     filters = []
     if not can_view_deleted:
@@ -208,7 +212,8 @@ async def get_mis_productos(
     
     query = select(Marketplace).options(
         joinedload(Marketplace.empresa),
-        joinedload(Marketplace.categoria)
+        joinedload(Marketplace.categoria),
+        joinedload(Marketplace.estado),
     ).where(Marketplace.id_empresa.in_(empresa_ids))
     
     result = await db.execute(query.offset(skip).limit(limit))

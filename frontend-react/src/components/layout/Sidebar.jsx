@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -15,6 +15,7 @@ import {
   faBell,
   faUser,
   faTowerBroadcast,
+  faHouse,
 } from "@fortawesome/free-solid-svg-icons";
 import { usePermissions } from "../../context/PermissionsContext";
 
@@ -48,10 +49,10 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="hidden w-72 border-r border-slate-200 bg-white/80 p-6 backdrop-blur lg:block">
+    <aside className="flex h-full w-72 flex-col border-r border-slate-200 bg-white/80 p-6 backdrop-blur lg:h-auto">
       <h1 className="text-xl font-semibold text-slate-900">Directorio 2.0</h1>
       <p className="mt-1 text-sm text-slate-500">Panel administrativo</p>
-      <nav className="mt-8 space-y-2">
+      <nav className="mt-8 flex-1 space-y-2">
         {visibleItems.map((item) => (
           <NavLink
             key={item.to}
@@ -70,6 +71,17 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Volver al Inicio */}
+      <div className="mt-4 border-t border-slate-200 pt-4">
+        <Link
+          to="/"
+          className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-primary-50 hover:text-primary-600"
+        >
+          <FontAwesomeIcon icon={faHouse} className="h-4 w-4" />
+          <span>Volver al Inicio</span>
+        </Link>
+      </div>
     </aside>
   );
 }

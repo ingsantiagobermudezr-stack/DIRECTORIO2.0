@@ -26,7 +26,7 @@ async def listar_mis_favoritos(
     """
     query = select(UsuarioFavorito).where(
         and_(
-            UsuarioFavorito.id_usuario == current_user["id"],
+            UsuarioFavorito.id_usuario == current_user.id,
             UsuarioFavorito.deleted_at.is_(None)
         )
     ).options(
@@ -52,7 +52,7 @@ async def contar_favoritos(
     """
     query = select(UsuarioFavorito).where(
         and_(
-            UsuarioFavorito.id_usuario == current_user["id"],
+            UsuarioFavorito.id_usuario == current_user.id,
             UsuarioFavorito.deleted_at.is_(None)
         )
     )
@@ -74,7 +74,7 @@ async def verificar_favorito(
     """
     query = select(UsuarioFavorito).where(
         and_(
-            UsuarioFavorito.id_usuario == current_user["id"],
+            UsuarioFavorito.id_usuario == current_user.id,
             UsuarioFavorito.id_marketplace == id_marketplace,
             UsuarioFavorito.deleted_at.is_(None)
         )
@@ -111,7 +111,7 @@ async def agregar_a_favoritos(
     # Verificar si ya está en favoritos
     existing_query = select(UsuarioFavorito).where(
         and_(
-            UsuarioFavorito.id_usuario == current_user["id"],
+            UsuarioFavorito.id_usuario == current_user.id,
             UsuarioFavorito.id_marketplace == id_marketplace,
             UsuarioFavorito.deleted_at.is_(None)
         )
@@ -124,7 +124,7 @@ async def agregar_a_favoritos(
     
     # Crear nuevo favorito
     favorito = UsuarioFavorito(
-        id_usuario=current_user["id"],
+        id_usuario=current_user.id,
         id_marketplace=id_marketplace
     )
     
@@ -146,7 +146,7 @@ async def eliminar_de_favoritos(
     """
     query = select(UsuarioFavorito).where(
         and_(
-            UsuarioFavorito.id_usuario == current_user["id"],
+            UsuarioFavorito.id_usuario == current_user.id,
             UsuarioFavorito.id_marketplace == id_marketplace,
             UsuarioFavorito.deleted_at.is_(None)
         )

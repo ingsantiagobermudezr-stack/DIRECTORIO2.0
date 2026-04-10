@@ -18,6 +18,7 @@ export const authApi = {
     }),
   signup: (payload) => http.post("/signup", payload),
   mePermisos: () => http.get("/me/permisos"),
+  updatePerfil: (payload) => http.put("/me/perfil", payload),
 };
 
 export const geoApi = {
