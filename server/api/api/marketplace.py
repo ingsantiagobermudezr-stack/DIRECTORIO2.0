@@ -115,6 +115,7 @@ async def get_marketplace(
         joinedload(Marketplace.empresa),
         joinedload(Marketplace.categoria),
         joinedload(Marketplace.estado),
+        joinedload(Marketplace.imagenes),
     )
     
     filters = []
@@ -169,7 +170,8 @@ async def get_marketplace_item(
     query = select(Marketplace).options(
         joinedload(Marketplace.empresa),
         joinedload(Marketplace.categoria),
-        joinedload(Marketplace.estado)
+        joinedload(Marketplace.estado),
+        joinedload(Marketplace.imagenes),
     ).where(Marketplace.id == id_marketplace)
     if not can_view_deleted:
         query = query.where(Marketplace.deleted_at.is_(None))
@@ -214,6 +216,7 @@ async def get_mis_productos(
         joinedload(Marketplace.empresa),
         joinedload(Marketplace.categoria),
         joinedload(Marketplace.estado),
+        joinedload(Marketplace.imagenes),
     ).where(Marketplace.id_empresa.in_(empresa_ids))
     
     result = await db.execute(query.offset(skip).limit(limit))
@@ -407,22 +410,14 @@ async def track_marketplace_click(
 
     return {"message": "Click registrado", "id_marketplace": id_marketplace}
 
-@router.get('/marketplace/{id_marketplace}/{url}')
+@router.get('/uploads/marketplace/{url}')
 async def get_marketplace_images(
-    id_marketplace: int,
+    url: str,
     db: AsyncSession = Depends(get_db)
 ):
     """Endpoint para servir las imágenes del marketplace"""
-    result = await db.execute(
-        select(ImagenMarketplace).where(ImagenMarketplace.id_marketplace == id_marketplace)
-    )
-    imagenes = result.scalars().all()
-    if not imagenes:
-        raise HTTPException(status_code=404, detail="No se encontraron imágenes para este producto")
-
     # Para simplicidad, servimos la primera imagen encontrada
-    imagen_url = imagenes[0].imagen_url
-    file_path = Path(get_upload_root()) / "marketplace" / Path(imagen_url).name
+    file_path = Path(get_upload_root()) / "marketplace" / url
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Archivo de imagen no encontrado")

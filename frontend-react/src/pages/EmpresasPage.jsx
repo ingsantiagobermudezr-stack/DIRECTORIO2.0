@@ -194,7 +194,7 @@ export function EmpresasPage({ readOnly = false }) {
               >
                 <button
                   type="button"
-                  onClick={() => navigate(`/empresas/${empresa.id}`)}
+                  onClick={() => navigate(`/empresa/${empresa.id}`)}
                   className="w-full text-left"
                 >
                   <div className="flex items-start gap-3">

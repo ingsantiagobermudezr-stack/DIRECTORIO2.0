@@ -2,10 +2,9 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faChevronDown,
-  faChevronUp,
   faFilter,
   faHeart,
+  faImage,
   faSearch,
   faStar,
   faStore,
@@ -74,6 +73,9 @@ function ProductCard({ producto }) {
   const empresaId = producto.empresa?.id || producto.id_empresa;
   const categoriaNombre = producto.categoria?.nombre || producto.categoria || null;
   const estadoNombre = producto.estado?.nombre || null;
+  const imagenes = producto.imagenes || [];
+  const totalImagenes = imagenes.length;
+  const primeraImagen = imagenes.length > 0 ? imagenes[0] : null;
   const precio = producto.precio ?? 0;
   const precioFormateado = new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -83,15 +85,22 @@ function ProductCard({ producto }) {
 
   const esSinStock = estadoNombre?.toLowerCase().includes("sin stock") || estadoNombre?.toLowerCase().includes("inactivo") || producto.stock === 0;
 
+  // Get image URL
+  const getImageUrl = (img) => {
+    if (!img) return "";
+    const url = typeof img === "string" ? img : img.imagen_url || img.url || "";
+    return url.startsWith("/") ? url.slice(1) : url;
+  };
+
   return (
     <div
       className="group cursor-pointer rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
       onClick={() => navigate(`/producto/${producto.id}`)}
     >
       <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-slate-100 to-slate-50 aspect-square">
-        {producto.imagenes && producto.imagenes.length > 0 ? (
+        {primeraImagen ? (
           <img
-            src={`${API_BASE_URL}${producto.imagenes[0]}`}
+            src={`${API_BASE_URL}/${getImageUrl(primeraImagen)}`}
             alt={producto.nombre}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
             loading="lazy"
@@ -99,6 +108,14 @@ function ProductCard({ producto }) {
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-400">
             <FontAwesomeIcon icon={faStore} size="3x" />
+          </div>
+        )}
+
+        {/* Image Count Badge */}
+        {totalImagenes > 1 && (
+          <div className="absolute top-3 left-3 rounded-full bg-black/70 px-2.5 py-1.5 text-xs font-bold text-white backdrop-blur">
+            <FontAwesomeIcon icon={faImage} className="mr-1" />
+            {totalImagenes}
           </div>
         )}
 

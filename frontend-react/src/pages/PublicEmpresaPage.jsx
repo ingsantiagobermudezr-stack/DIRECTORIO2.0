@@ -34,6 +34,9 @@ const pickNumber = (...values) => {
 function ProductCard({ producto }) {
   const navigate = useNavigate();
 
+  const imagenes = producto.imagenes || [];
+  const totalImagenes = imagenes.length;
+  const primeraImagen = imagenes.length > 0 ? imagenes[0] : null;
   const precio = producto.precio ?? 0;
   const precioFormateado = new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -41,35 +44,52 @@ function ProductCard({ producto }) {
     minimumFractionDigits: 0,
   }).format(precio);
 
+  // Get image URL
+  const getImageUrl = (img) => {
+    if (!img) return "";
+    const url = typeof img === "string" ? img : img.imagen_url || img.url || "";
+    return url.startsWith("/") ? url.slice(1) : url;
+  };
+
   return (
     <div
-      className="product-card cursor-pointer rounded-xl border border-slate-200 bg-white shadow-sm"
+      className="group cursor-pointer rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
       onClick={() => navigate(`/producto/${producto.id}`)}
     >
-      <div className="relative overflow-hidden rounded-t-xl bg-slate-100 aspect-square">
-        {producto.imagenes && producto.imagenes.length > 0 ? (
+      <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-slate-100 to-slate-50 aspect-square">
+        {primeraImagen ? (
           <img
-            src={`${API_BASE_URL}${producto.imagenes[0]}`}
+            src={`${API_BASE_URL}/${getImageUrl(primeraImagen)}`}
             alt={producto.nombre}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
             loading="lazy"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-400">
-            <FontAwesomeIcon icon={faStore} size="2x" />
+            <FontAwesomeIcon icon={faStore} size="3x" />
+          </div>
+        )}
+
+        {/* Image Count Badge */}
+        {totalImagenes > 1 && (
+          <div className="absolute top-3 left-3 rounded-full bg-black/70 px-2.5 py-1.5 text-xs font-bold text-white backdrop-blur">
+            <FontAwesomeIcon icon={faImage} className="mr-1" />
+            {totalImagenes}
           </div>
         )}
 
         {producto.stock === 0 && (
-          <div className="absolute top-2 left-2 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
+          <div className="absolute top-3 right-3 rounded-full bg-gradient-to-r from-red-500 to-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
             Sin stock
           </div>
         )}
       </div>
 
-      <div className="p-3">
-        <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{producto.nombre}</h3>
-        <p className="mt-2 text-lg font-bold text-slate-900">{precioFormateado}</p>
+      <div className="p-4">
+        <h3 className="line-clamp-2 text-sm font-semibold text-slate-900 group-hover:text-primary-600 transition-colors duration-200">
+          {producto.nombre}
+        </h3>
+        <p className="mt-2 text-xl font-bold text-slate-900">{precioFormateado}</p>
         <p className="mt-1 text-xs text-slate-500">{producto.stock ?? 0} disponibles</p>
       </div>
     </div>
@@ -230,13 +250,13 @@ export function PublicEmpresaPage() {
 
             <div className="flex gap-3">
               {isAuthenticated && (
-                <button
-                  onClick={() => navigate(`/mensajes?id_empresa=${idEmpresa}`)}
+                <a
+                  href={`mailto:${data.correo}`}
                   className="flex items-center gap-2 rounded-xl bg-primary-500 px-6 py-3 font-semibold text-slate-900 transition hover:bg-primary-400"
                 >
                   <FontAwesomeIcon icon={faMessage} />
                   Contactar
-                </button>
+                </a>
               )}
             </div>
           </div>

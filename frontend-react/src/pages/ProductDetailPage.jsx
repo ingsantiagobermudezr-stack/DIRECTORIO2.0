@@ -36,43 +36,91 @@ const pickNumber = (...values) => {
   return 0;
 };
 
-function ImageGallery({ imagenes, nombre }) {
+function ImageGallery({ imagenes, productId, nombre }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
 
-  if (!imagenes || imagenes.length === 0) {
+  // Get image URL - handle both array of strings and array of objects
+  const getImageUrl = (img) => {
+    if (!img) return "";
+    const url = typeof img === "string" ? img : img.imagen_url || img.url || "";
+    // Remove leading slash if present to avoid double slashes
+    return url.startsWith("/") ? url.slice(1) : url;
+  };
+
+  const totalImages = imagenes?.length || 0;
+  const hasImages = totalImages > 0;
+
+  if (!hasImages) {
     return (
-      <div className="flex aspect-square items-center justify-center rounded-xl bg-slate-100">
+      <div className="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50">
         <FontAwesomeIcon icon={faImage} size="4x" className="text-slate-400" />
       </div>
     );
   }
 
+  const currentImageUrl = getImageUrl(imagenes[currentIndex]);
+
   return (
-    <div className="space-y-3">
-      {/* Main Image */}
-      <div className="overflow-hidden rounded-xl bg-slate-100 aspect-square">
+    <div className="space-y-4">
+      {/* Main Image with Zoom */}
+      <div
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 aspect-square cursor-zoom-in"
+        onClick={() => setIsZoomed(!isZoomed)}
+      >
         <img
-          src={`${API_BASE_URL}${imagenes[currentIndex]}`}
+          src={`${API_BASE_URL}/${currentImageUrl}`}
           alt={`${nombre} - Imagen ${currentIndex + 1}`}
-          className="h-full w-full object-cover"
+          className={`h-full w-full object-cover transition-transform duration-300 ${isZoomed ? "scale-150" : "scale-100"}`}
         />
+        
+        {/* Image Counter Badge */}
+        {totalImages > 1 && (
+          <div className="absolute top-3 right-3 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">
+            {currentIndex + 1} / {totalImages}
+          </div>
+        )}
+
+        {/* Navigation Arrows */}
+        {totalImages > 1 && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentIndex((prev) => (prev > 0 ? prev - 1 : totalImages - 1));
+              }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2.5 shadow-lg transition hover:bg-white hover:scale-110"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} className="text-slate-700" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentIndex((prev) => (prev < totalImages - 1 ? prev + 1 : 0));
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2.5 shadow-lg transition hover:bg-white hover:scale-110"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} className="rotate-180 text-slate-700" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Thumbnail Images */}
-      {imagenes.length > 1 && (
+      {totalImages > 1 && (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
           {imagenes.map((imagen, index) => (
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
-              className={`overflow-hidden rounded-lg border-2 ${
+              className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 ${
                 index === currentIndex
-                  ? "border-primary-500"
-                  : "border-transparent hover:border-slate-300"
+                  ? "border-primary-500 ring-2 ring-primary-500/30"
+                  : "border-transparent hover:border-slate-300 opacity-60 hover:opacity-100"
               }`}
             >
               <img
-                src={`${API_BASE_URL}${imagen}`}
+                src={`${API_BASE_URL}/${getImageUrl(imagen)}`}
                 alt={`${nombre} - Thumbnail ${index + 1}`}
                 className="aspect-square w-full object-cover"
               />

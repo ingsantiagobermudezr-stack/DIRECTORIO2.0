@@ -18,15 +18,16 @@ class MarketplaceCreate(MarketplaceBase):
 class MarketplaceResponse(MarketplaceBase):
     """
     Respuesta del marketplace con detalles completos del producto/servicio
-    Incluye joins de empresa, categoría y estado
+    Incluye joins de empresa, categoría, estado e imágenes
     """
     id: int
     fecha_publicacion: datetime
-    
+
     # Joins opcionales
     empresa: Optional[dict] = None
     categoria: Optional[dict] = None
     estado: Optional[dict] = None
+    imagenes: Optional[list[str]] = None
 
     @model_validator(mode='before')
     @classmethod
@@ -34,9 +35,9 @@ class MarketplaceResponse(MarketplaceBase):
         """Convierte objetos relacionales de SQLAlchemy a diccionarios"""
         if hasattr(data, '__dict__'):
             data = data.__dict__
-        
+
         result = dict(data) if isinstance(data, dict) else {}
-        
+
         # Resolver empresa
         if 'empresa' in result and hasattr(result['empresa'], '__dict__'):
             emp = result['empresa']
@@ -66,7 +67,7 @@ class MarketplaceResponse(MarketplaceBase):
                     'id': getattr(cat, 'id', None),
                     'nombre': getattr(cat, 'nombre', None),
                 }
-        
+
         # Resolver categoría del producto
         if 'categoria' in result and hasattr(result['categoria'], '__dict__'):
             cat = result['categoria']
@@ -74,7 +75,7 @@ class MarketplaceResponse(MarketplaceBase):
                 'id': getattr(cat, 'id', None),
                 'nombre': getattr(cat, 'nombre', None),
             }
-        
+
         # Resolver estado
         if 'estado' in result and hasattr(result['estado'], '__dict__'):
             est = result['estado']
@@ -83,7 +84,16 @@ class MarketplaceResponse(MarketplaceBase):
                 'nombre': getattr(est, 'nombre', None),
                 'descripcion': getattr(est, 'descripcion', None),
             }
-        
+
+        # Resolver imágenes - extraer URLs de la relación
+        if 'imagenes' in result:
+            imgs = result['imagenes']
+            if hasattr(imgs, '__iter__') and not isinstance(imgs, str):
+                result['imagenes'] = [
+                    getattr(img, 'imagen_url', str(img)) if hasattr(img, 'imagen_url') else str(img)
+                    for img in imgs
+                ]
+
         return result
 
     model_config = {"from_attributes": True}
