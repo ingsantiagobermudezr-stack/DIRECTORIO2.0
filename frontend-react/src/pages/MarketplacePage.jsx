@@ -72,6 +72,33 @@ export function MarketplacePage({ readOnly = false }) {
   const categorias = useAsyncData(async () => (await categoriasApi.list({ limit: 200 })).data);
   const estados = useAsyncData(async () => (await catalogosApi.estadosMarketplace({ limit: 100 })).data);
 
+  // ReactSelect options
+  const empresaOptions = useMemo(
+    () => [{ value: "", label: "Todas las empresas" }, ...(empresas.data || []).map((e) => ({ value: String(e.id), label: e.nombre }))],
+    [empresas.data],
+  );
+  const categoriaOptions = useMemo(
+    () => [{ value: "", label: "Todas las categorías" }, ...(categorias.data || []).map((c) => ({ value: String(c.id), label: c.nombre }))],
+    [categorias.data],
+  );
+  const estadoOptions = useMemo(
+    () => [{ value: "", label: "Todos los estados" }, ...(estados.data || []).map((e) => ({ value: String(e.id), label: e.nombre }))],
+    [estados.data],
+  );
+
+  const selectStyles = {
+    control: (base) => ({
+      ...base,
+      borderRadius: "0.75rem",
+      minHeight: "44px",
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected ? "#fef08a" : state.isFocused ? "#fefce8" : base.backgroundColor,
+      color: "#0f172a",
+    }),
+  };
+
   const crearProducto = async (event) => {
     event.preventDefault();
     try {
@@ -184,31 +211,40 @@ export function MarketplacePage({ readOnly = false }) {
           <button className="rounded-xl bg-slate-900 px-4 py-2 text-white" onClick={marketplace.reload}>Refrescar</button>
         </div>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={filtros.id_empresa} onChange={(e) => setFiltros((prev) => ({ ...prev, id_empresa: e.target.value }))}>
-            <option value="">Empresa</option>
-            {(empresas.data || []).map((empresa) => (
-              <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-            ))}
-          </select>
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={filtros.id_categoria} onChange={(e) => setFiltros((prev) => ({ ...prev, id_categoria: e.target.value }))}>
-            <option value="">Categoría</option>
-            {(categorias.data || []).map((categoria) => (
-              <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
-            ))}
-          </select>
-          <select className="rounded-xl border border-slate-300 px-3 py-2" value={filtros.id_estado} onChange={(e) => setFiltros((prev) => ({ ...prev, id_estado: e.target.value }))}>
-            <option value="">Estado</option>
-            {(estados.data || []).map((estado) => (
-              <option key={estado.id} value={estado.id}>{estado.nombre}</option>
-            ))}
-          </select>
+          <ReactSelect
+            value={empresaOptions.find((o) => o.value === filtros.id_empresa) || null}
+            onChange={(selected) => setFiltros((prev) => ({ ...prev, id_empresa: selected?.value || "" }))}
+            options={empresaOptions}
+            placeholder="Empresa"
+            isSearchable
+            isClearable
+            styles={selectStyles}
+          />
+          <ReactSelect
+            value={categoriaOptions.find((o) => o.value === filtros.id_categoria) || null}
+            onChange={(selected) => setFiltros((prev) => ({ ...prev, id_categoria: selected?.value || "" }))}
+            options={categoriaOptions}
+            placeholder="Categoría"
+            isSearchable
+            isClearable
+            styles={selectStyles}
+          />
+          <ReactSelect
+            value={estadoOptions.find((o) => o.value === filtros.id_estado) || null}
+            onChange={(selected) => setFiltros((prev) => ({ ...prev, id_estado: selected?.value || "" }))}
+            options={estadoOptions}
+            placeholder="Estado"
+            isSearchable
+            isClearable
+            styles={selectStyles}
+          />
           <select className="rounded-xl border border-slate-300 px-3 py-2" value={filtros.ordenar} onChange={(e) => setFiltros((prev) => ({ ...prev, ordenar: e.target.value }))}>
             <option value="fecha_publicacion">Ordenar: fecha</option>
             <option value="precio">Ordenar: precio</option>
             <option value="nombre">Ordenar: nombre</option>
           </select>
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio mínimo" type="number" value={filtros.precio_min} onChange={(e) => setFiltros((prev) => ({ ...prev, precio_min: e.target.value }))} />
-          <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio máximo" type="number" value={filtros.precio_max} onChange={(e) => setFiltros((prev) => ({ ...prev, precio_max: e.target.value }))} />
+          <Input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio mínimo" type="text" value={filtros.precio_min} onChange={(e) => setFiltros((prev) => ({ ...prev, precio_min: e.target.value }))} />
+          <Input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio máximo" type="text" value={filtros.precio_max} onChange={(e) => setFiltros((prev) => ({ ...prev, precio_max: e.target.value }))} />
           {!readOnly ? (
             <label className="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 md:col-span-2">
               <input type="checkbox" checked={filtros.solo_mis_productos} onChange={(e) => setFiltros((prev) => ({ ...prev, solo_mis_productos: e.target.checked }))} />
@@ -356,34 +392,45 @@ export function MarketplacePage({ readOnly = false }) {
               </article>
             }
           >
-            <form onSubmit={actualizarProducto} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-              <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Editar producto</h3>
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="ID producto" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={editForm.nombre} onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Descripción" value={editForm.descripcion} onChange={(e) => setEditForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio" type="number" min="0" value={editForm.precio} onChange={(e) => setEditForm((prev) => ({ ...prev, precio: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Stock" type="number" min="0" value={editForm.stock} onChange={(e) => setEditForm((prev) => ({ ...prev, stock: e.target.value }))} required />
+            <form onSubmit={actualizarProducto} className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
+              <h3 className="md:col-span-2 text-xl font-bold text-slate-900">Editar producto</h3>
+              <Input label="ID producto" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} required />
+              <Input label="Nombre" value={editForm.nombre} onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
+              <Input label="Descripción" value={editForm.descripcion} onChange={(e) => setEditForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
+              <Input label="Precio" type="number" min="0" value={editForm.precio} onChange={(e) => setEditForm((prev) => ({ ...prev, precio: e.target.value }))} required />
+              <Input label="Stock" type="number" min="0" value={editForm.stock} onChange={(e) => setEditForm((prev) => ({ ...prev, stock: e.target.value }))} required />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_empresa} onChange={(e) => setEditForm((prev) => ({ ...prev, id_empresa: e.target.value }))} required>
-                <option value="">Selecciona empresa</option>
-                {(empresas.data || []).map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-                ))}
-              </select>
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_categoria} onChange={(e) => setEditForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
-                <option value="">Selecciona categoría</option>
-                {(categorias.data || []).map((categoria) => (
-                  <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
-                ))}
-              </select>
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_estado} onChange={(e) => setEditForm((prev) => ({ ...prev, id_estado: e.target.value }))}>
-                <option value="">Selecciona estado</option>
-                {(estados.data || []).map((estado) => (
-                  <option key={estado.id} value={estado.id}>{estado.nombre}</option>
-                ))}
-              </select>
+              <ReactSelect
+                label="Empresa"
+                value={empresaOptions.find((o) => o.value === editForm.id_empresa) || null}
+                onChange={(selected) => setEditForm((prev) => ({ ...prev, id_empresa: selected?.value || "" }))}
+                options={empresaOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona empresa"
+                isClearable={false}
+                styles={selectStyles}
+                required
+              />
+              <ReactSelect
+                label="Categoría"
+                value={categoriaOptions.find((o) => o.value === editForm.id_categoria) || null}
+                onChange={(selected) => setEditForm((prev) => ({ ...prev, id_categoria: selected?.value || "" }))}
+                options={categoriaOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona categoría"
+                isClearable={false}
+                styles={selectStyles}
+                required
+              />
+              <ReactSelect
+                label="Estado"
+                value={estadoOptions.find((o) => o.value === editForm.id_estado) || null}
+                onChange={(selected) => setEditForm((prev) => ({ ...prev, id_estado: selected?.value || "" }))}
+                options={estadoOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona estado"
+                isClearable
+                styles={selectStyles}
+              />
 
-              <button className="md:col-span-2 rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white">Guardar cambios</button>
+              <button className="md:col-span-2 rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-700">Guardar cambios</button>
             </form>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -404,35 +451,46 @@ export function MarketplacePage({ readOnly = false }) {
               </article>
             }
           >
-            <form onSubmit={crearProducto} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-              <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Crear producto</h3>
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={form.nombre} onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Precio" type="number" min="0" value={form.precio} onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Stock" type="number" min="0" value={form.stock} onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))} required />
+            <form onSubmit={crearProducto} className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
+              <h3 className="md:col-span-2 text-xl font-bold text-slate-900">Crear producto</h3>
+              <Input label="Nombre" value={form.nombre} onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
+              <Input label="Descripción" value={form.descripcion} onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))} required />
+              <Input label="Precio" type="number" min="0" value={form.precio} onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))} required />
+              <Input label="Stock" type="number" min="0" value={form.stock} onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))} required />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_empresa} onChange={(e) => setForm((prev) => ({ ...prev, id_empresa: e.target.value }))} required>
-                <option value="">Selecciona empresa</option>
-                {(empresas.data || []).map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-                ))}
-              </select>
+              <ReactSelect
+                label="Empresa"
+                value={empresaOptions.find((o) => o.value === form.id_empresa) || null}
+                onChange={(selected) => setForm((prev) => ({ ...prev, id_empresa: selected?.value || "" }))}
+                options={empresaOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona empresa"
+                isClearable={false}
+                styles={selectStyles}
+                required
+              />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_categoria} onChange={(e) => setForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
-                <option value="">Selecciona categoría</option>
-                {(categorias.data || []).map((categoria) => (
-                  <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
-                ))}
-              </select>
+              <ReactSelect
+                label="Categoría"
+                value={categoriaOptions.find((o) => o.value === form.id_categoria) || null}
+                onChange={(selected) => setForm((prev) => ({ ...prev, id_categoria: selected?.value || "" }))}
+                options={categoriaOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona categoría"
+                isClearable={false}
+                styles={selectStyles}
+                required
+              />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_estado} onChange={(e) => setForm((prev) => ({ ...prev, id_estado: e.target.value }))}>
-                <option value="">Selecciona estado</option>
-                {(estados.data || []).map((estado) => (
-                  <option key={estado.id} value={estado.id}>{estado.nombre}</option>
-                ))}
-              </select>
+              <ReactSelect
+                label="Estado"
+                value={estadoOptions.find((o) => o.value === form.id_estado) || null}
+                onChange={(selected) => setForm((prev) => ({ ...prev, id_estado: selected?.value || "" }))}
+                options={estadoOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona estado"
+                isClearable
+                styles={selectStyles}
+              />
 
-              <button className="md:col-span-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white">Crear producto</button>
+              <button className="md:col-span-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white hover:bg-teal-700">Crear producto</button>
             </form>
           </PermissionGate>
         </>

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowUpRightFromSquare, faImage, faBuilding } from "@fortawesome/free-solid-svg-icons";
 import { DataTable } from "../components/common/DataTable";
 import { EmptyState } from "../components/common/EmptyState";
 import { Loading } from "../components/common/Loading";
+import { Input } from "../components/common/Input";
+import { ReactSelect } from "../components/common/ReactSelect";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { categoriasApi, empresasApi, geoApi } from "../services/api";
 import { useToast } from "../context/ToastContext";
@@ -50,6 +52,29 @@ export function EmpresasPage({ readOnly = false }) {
     async () => (await geoApi.municipios({ id_departamento: form.id_departamento || undefined, limit: 400 })).data,
     form.id_departamento,
   );
+
+  // ReactSelect options
+  const categoriaOptions = useMemo(
+    () => [{ value: "", label: "Selecciona categoría" }, ...(categorias.data || []).map((c) => ({ value: String(c.id), label: c.nombre }))],
+    [categorias.data],
+  );
+  const municipioOptions = useMemo(
+    () => [{ value: "", label: "Selecciona municipio" }, ...(municipios.data || []).map((m) => ({ value: String(m.id), label: m.nombre }))],
+    [municipios.data],
+  );
+
+  const selectStyles = {
+    control: (base) => ({
+      ...base,
+      borderRadius: "0.75rem",
+      minHeight: "44px",
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected ? "#fef08a" : state.isFocused ? "#fefce8" : base.backgroundColor,
+      color: "#0f172a",
+    }),
+  };
 
   const empresas = useAsyncData(async () => {
     const { data } = await empresasApi.list({ search: nombre || undefined, limit: 30 });
@@ -319,30 +344,38 @@ export function EmpresasPage({ readOnly = false }) {
               </article>
             }
           >
-            <form onSubmit={actualizarEmpresa} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-              <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Editar empresa</h3>
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="ID empresa" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={editForm.nombre} onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="NIT" value={editForm.nit} onChange={(e) => setEditForm((prev) => ({ ...prev, nit: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Correo" type="email" value={editForm.correo} onChange={(e) => setEditForm((prev) => ({ ...prev, correo: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Dirección" value={editForm.direccion} onChange={(e) => setEditForm((prev) => ({ ...prev, direccion: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Teléfono" value={editForm.telefono} onChange={(e) => setEditForm((prev) => ({ ...prev, telefono: e.target.value }))} required />
+            <form onSubmit={actualizarEmpresa} className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
+              <h3 className="md:col-span-2 text-xl font-bold text-slate-900">Editar empresa</h3>
+              <Input label="ID empresa" value={editForm.id} onChange={(e) => setEditForm((prev) => ({ ...prev, id: e.target.value }))} required />
+              <Input label="Nombre" value={editForm.nombre} onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
+              <Input label="NIT" value={editForm.nit} onChange={(e) => setEditForm((prev) => ({ ...prev, nit: e.target.value }))} required />
+              <Input label="Correo" type="email" value={editForm.correo} onChange={(e) => setEditForm((prev) => ({ ...prev, correo: e.target.value }))} required />
+              <Input label="Dirección" value={editForm.direccion} onChange={(e) => setEditForm((prev) => ({ ...prev, direccion: e.target.value }))} required />
+              <Input label="Teléfono" value={editForm.telefono} onChange={(e) => setEditForm((prev) => ({ ...prev, telefono: e.target.value }))} required />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_categoria} onChange={(e) => setEditForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
-                <option value="">Selecciona categoría</option>
-                {(categorias.data || []).map((categoria) => (
-                  <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
-                ))}
-              </select>
+              <ReactSelect
+                label="Categoría"
+                value={categoriaOptions.find((o) => o.value === editForm.id_categoria) || null}
+                onChange={(selected) => setEditForm((prev) => ({ ...prev, id_categoria: selected?.value || "" }))}
+                options={categoriaOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona categoría"
+                isClearable={false}
+                styles={selectStyles}
+                required
+              />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={editForm.id_municipio} onChange={(e) => setEditForm((prev) => ({ ...prev, id_municipio: e.target.value }))} required>
-                <option value="">Selecciona municipio</option>
-                {(municipios.data || []).map((municipio) => (
-                  <option key={municipio.id} value={municipio.id}>{municipio.nombre}</option>
-                ))}
-              </select>
+              <ReactSelect
+                label="Municipio"
+                value={municipioOptions.find((o) => o.value === editForm.id_municipio) || null}
+                onChange={(selected) => setEditForm((prev) => ({ ...prev, id_municipio: selected?.value || "" }))}
+                options={municipioOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona municipio"
+                isClearable={false}
+                styles={selectStyles}
+                required
+              />
 
-              <button className="md:col-span-2 rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white">Guardar cambios</button>
+              <button className="md:col-span-2 rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-700">Guardar cambios</button>
             </form>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -363,56 +396,55 @@ export function EmpresasPage({ readOnly = false }) {
               </article>
             }
           >
-            <form onSubmit={crearEmpresa} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-              <h3 className="md:col-span-2 text-lg font-semibold text-slate-900">Crear empresa</h3>
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nombre" value={form.nombre} onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="NIT" value={form.nit} onChange={(e) => setForm((prev) => ({ ...prev, nit: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Correo" type="email" value={form.correo} onChange={(e) => setForm((prev) => ({ ...prev, correo: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Dirección" value={form.direccion} onChange={(e) => setForm((prev) => ({ ...prev, direccion: e.target.value }))} required />
-              <input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Teléfono" value={form.telefono} onChange={(e) => setForm((prev) => ({ ...prev, telefono: e.target.value }))} required />
+            <form onSubmit={crearEmpresa} className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
+              <h3 className="md:col-span-2 text-xl font-bold text-slate-900">Crear empresa</h3>
+              <Input label="Nombre" value={form.nombre} onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
+              <Input label="NIT" value={form.nit} onChange={(e) => setForm((prev) => ({ ...prev, nit: e.target.value }))} required />
+              <Input label="Correo" type="email" value={form.correo} onChange={(e) => setForm((prev) => ({ ...prev, correo: e.target.value }))} required />
+              <Input label="Dirección" value={form.direccion} onChange={(e) => setForm((prev) => ({ ...prev, direccion: e.target.value }))} required />
+              <Input label="Teléfono" value={form.telefono} onChange={(e) => setForm((prev) => ({ ...prev, telefono: e.target.value }))} required />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_categoria} onChange={(e) => setForm((prev) => ({ ...prev, id_categoria: e.target.value }))} required>
-                <option value="">Selecciona categoría</option>
-                {(categorias.data || []).map((categoria) => (
-                  <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>
-                ))}
-              </select>
-
-              <select
-                className="rounded-xl border border-slate-300 px-3 py-2"
-                value={form.id_pais}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, id_pais: e.target.value, id_departamento: "", id_municipio: "" }))
-                }
+              <ReactSelect
+                label="Categoría"
+                value={categoriaOptions.find((o) => o.value === form.id_categoria) || null}
+                onChange={(selected) => setForm((prev) => ({ ...prev, id_categoria: selected?.value || "" }))}
+                options={categoriaOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona categoría"
+                isClearable={false}
+                styles={selectStyles}
                 required
-              >
-                <option value="">Selecciona país</option>
-                {(paises.data || []).map((pais) => (
-                  <option key={pais.id} value={pais.id}>{pais.nombre}</option>
-                ))}
-              </select>
+              />
 
-              <select
-                className="rounded-xl border border-slate-300 px-3 py-2"
+              <Input
+                label="País"
+                value={form.id_pais}
+                onChange={(e) => setForm((prev) => ({ ...prev, id_pais: e.target.value, id_departamento: "", id_municipio: "" }))}
+                placeholder="Ej: 57 (Colombia)"
+                required
+              />
+
+              <Input
+                label="Departamento"
                 value={form.id_departamento}
                 onChange={(e) => setForm((prev) => ({ ...prev, id_departamento: e.target.value, id_municipio: "" }))}
+                placeholder="Ej: 11 (Bogotá D.C.)"
                 required
                 disabled={!form.id_pais}
-              >
-                <option value="">Selecciona departamento</option>
-                {(departamentos.data || []).map((departamento) => (
-                  <option key={departamento.id} value={departamento.id}>{departamento.nombre}</option>
-                ))}
-              </select>
+              />
 
-              <select className="rounded-xl border border-slate-300 px-3 py-2" value={form.id_municipio} onChange={(e) => setForm((prev) => ({ ...prev, id_municipio: e.target.value }))} required disabled={!form.id_departamento}>
-                <option value="">Selecciona municipio</option>
-                {(municipios.data || []).map((municipio) => (
-                  <option key={municipio.id} value={municipio.id}>{municipio.nombre}</option>
-                ))}
-              </select>
+              <ReactSelect
+                label="Municipio"
+                value={municipioOptions.find((o) => o.value === form.id_municipio) || null}
+                onChange={(selected) => setForm((prev) => ({ ...prev, id_municipio: selected?.value || "" }))}
+                options={municipioOptions.filter((o) => o.value !== "")}
+                placeholder="Selecciona municipio"
+                isClearable={false}
+                styles={selectStyles}
+                required
+                disabled={!form.id_departamento}
+              />
 
-              <button className="md:col-span-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white">Crear empresa</button>
+              <button className="md:col-span-2 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white hover:bg-teal-700">Crear empresa</button>
             </form>
           </PermissionGate>
         </>
