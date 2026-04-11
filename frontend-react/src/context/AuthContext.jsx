@@ -1,12 +1,37 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { authApi } from "../services/api";
-import { clearSession, getToken, getUser, saveSession } from "../lib/storage";
+import { clearSession, getToken, getUser, isSessionExpired, saveSession } from "../lib/storage";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(getToken());
   const [user, setUser] = useState(getUser());
+
+  // Check session expiration on mount and periodically
+  useEffect(() => {
+    const checkSession = () => {
+      if (token && isSessionExpired()) {
+        clearSession();
+        setToken(null);
+        setUser(null);
+        
+        // Redirect to login if session expired
+        const currentPath = window.location.pathname + window.location.search;
+        if (window.location.pathname !== "/login") {
+          window.location.href = `/login?next=${encodeURIComponent(currentPath)}`;
+        }
+      }
+    };
+
+    // Check immediately on mount
+    checkSession();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkSession, 30000);
+
+    return () => clearInterval(interval);
+  }, [token]);
 
   const signin = async ({ username, password }) => {
     const { data } = await authApi.signin({ username, password });
@@ -46,7 +71,7 @@ export function AuthProvider({ children }) {
     () => ({
       token,
       user,
-      isAuthenticated: Boolean(token),
+      isAuthenticated: Boolean(token) && !isSessionExpired(),
       signin,
       signup,
       signout,

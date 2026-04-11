@@ -20,6 +20,14 @@ http.interceptors.response.use(
   (error) => {
     if (error?.response?.status === 401) {
       clearSession();
+      // Redirect to login page immediately
+      const currentPath = window.location.pathname + window.location.search;
+      const loginUrl = `/login?next=${encodeURIComponent(currentPath)}`;
+      
+      // Only redirect if not already on login page
+      if (window.location.pathname !== "/login") {
+        window.location.href = loginUrl;
+      }
     }
     return Promise.reject(error);
   },
