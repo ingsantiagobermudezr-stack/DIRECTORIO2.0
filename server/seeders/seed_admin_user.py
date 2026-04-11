@@ -5,7 +5,7 @@ pwd_context = PasswordHash.recommended()
 async def seed_admin_user(run_sql_statements):
     from sqlalchemy import text
 
-    hashed_password = pwd_context.hash("123456")
+    hashed_password = pwd_context.hash("12345678")
 
     sql_statements = [
         text(f"""
