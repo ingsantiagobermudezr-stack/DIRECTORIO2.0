@@ -25,6 +25,9 @@ import { PublicEmpresaPage } from "./pages/PublicEmpresaPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { FavoritosPage as PublicFavoritosPage } from "./pages/PublicFavoritosPage";
 import { PublicPerfilPage } from "./pages/PublicPerfilPage";
+import { ChatRoomsPage } from "./pages/ChatRoomsPage";
+import { ChatRoomDetailPage } from "./pages/ChatRoomDetailPage";
+import { UserChatPage } from "./pages/UserChatPage";
 
 function App() {
   return (
@@ -79,8 +82,11 @@ function App() {
             }
           />
           <Route path="notificaciones" element={<NotificacionesPage />} />
+          <Route path="chat" element={<ChatRoomsPage />} />
+          <Route path="chat/:marketplaceId" element={<ChatRoomDetailPage />} />
           <Route path="perfil" element={<PerfilPage />} />
         </Route>
+        <Route path="mis-chats" element={<UserChatPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ToastContainer

@@ -145,7 +145,7 @@ async def listar_mis_notificaciones(
     """
     query = select(Notificacion).where(
         and_(
-            Notificacion.id_usuario_destinatario == current_user["id"],
+            Notificacion.id_usuario_destinatario == current_user.id,
             Notificacion.deleted_at.is_(None)
         )
     ).options(
@@ -174,7 +174,7 @@ async def contar_notificaciones(
     """
     query = select(Notificacion).where(
         and_(
-            Notificacion.id_usuario_destinatario == current_user["id"],
+            Notificacion.id_usuario_destinatario == current_user.id,
             Notificacion.deleted_at.is_(None)
         )
     )
@@ -201,7 +201,7 @@ async def contar_sin_leer(
     """
     query = select(Notificacion).where(
         and_(
-            Notificacion.id_usuario_destinatario == current_user["id"],
+            Notificacion.id_usuario_destinatario == current_user.id,
             Notificacion.leido == False,
             Notificacion.deleted_at.is_(None)
         )
@@ -225,7 +225,7 @@ async def marcar_como_leida(
     query = select(Notificacion).where(
         and_(
             Notificacion.id == id_notificacion,
-            Notificacion.id_usuario_destinatario == current_user["id"]
+            Notificacion.id_usuario_destinatario == current_user.id
         )
     )
     
@@ -252,7 +252,7 @@ async def marcar_todas_como_leidas(
     """
     query = select(Notificacion).where(
         and_(
-            Notificacion.id_usuario_destinatario == current_user["id"],
+            Notificacion.id_usuario_destinatario == current_user.id,
             Notificacion.leido == False,
             Notificacion.deleted_at.is_(None)
         )
@@ -283,7 +283,7 @@ async def eliminar_notificacion(
     query = select(Notificacion).where(
         and_(
             Notificacion.id == id_notificacion,
-            Notificacion.id_usuario_destinatario == current_user["id"]
+            Notificacion.id_usuario_destinatario == current_user.id
         )
     )
     

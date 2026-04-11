@@ -16,6 +16,7 @@ import {
   faUser,
   faTowerBroadcast,
   faHouse,
+  faMessage,
 } from "@fortawesome/free-solid-svg-icons";
 import { usePermissions } from "../../context/PermissionsContext";
 
@@ -32,6 +33,7 @@ const navItems = [
   { to: "/admin/publicidades", label: "Publicidades", icon: faBullhorn },
   { to: "/admin/admin-live", label: "Admin Live", icon: faTowerBroadcast, adminOnly: true },
   { to: "/admin/notificaciones", label: "Notificaciones", icon: faBell },
+  { to: "/admin/chat", label: "Chat Marketplace", icon: faMessage },
   { to: "/admin/perfil", label: "Mi perfil", icon: faUser },
 ];
 

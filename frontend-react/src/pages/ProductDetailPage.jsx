@@ -425,11 +425,22 @@ export function ProductDetailPage() {
       return;
     }
 
+    const userId = user.id_usuario || user.id;
+    
+    if (!userId) {
+      pushToast({
+        title: "Error",
+        message: "No se pudo identificar tu usuario.",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       await mensajesApi.create({
         id_marketplace: Number(productId),
-        id_usuario_creador_chat: user.id_usuario,
-        id_usuario_enviador_mensaje: user.id_usuario,
+        id_usuario_creador_chat: Number(userId),
+        id_usuario_enviador_mensaje: Number(userId),
         mensaje,
       });
 
@@ -440,7 +451,7 @@ export function ProductDetailPage() {
       });
 
       setMensaje("");
-      navigate("/mensajes");
+      navigate(`/mis-chats`);
     } catch (error) {
       pushToast({
         title: "Error",
