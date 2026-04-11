@@ -24,7 +24,7 @@ export function UserChatPage() {
   const ws = useRef(null);
   const mensajesEndRef = useRef(null);
 
-  // Load user's messages
+  // Load user's messages (both sent AND received)
   useEffect(() => {
     const loadMensajes = async () => {
       if (!user) {
@@ -35,8 +35,12 @@ export function UserChatPage() {
       try {
         const userId = user.id_usuario || user.id;
         const { data } = await mensajesApi.list({ limit: 500 });
-        // Filter only messages where user is the sender
-        const userMessages = data?.filter(m => m.id_usuario_enviador_mensaje === userId) || [];
+        // Filter messages where user is sender OR receiver (chat creator)
+        const userMessages = data?.filter(
+          (m) =>
+            m.id_usuario_enviador_mensaje === userId ||
+            m.id_usuario_creador_chat === userId
+        ) || [];
         setMensajes(userMessages);
       } catch (error) {
         console.error("Error loading messages:", error);
@@ -47,6 +51,32 @@ export function UserChatPage() {
 
     loadMensajes();
   }, [user]);
+
+  // Polling: Reload messages every 5 seconds
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const userId = user.id_usuario || user.id;
+        const { data } = await mensajesApi.list({ limit: 500 });
+        const userMessages = data?.filter(
+          (m) =>
+            m.id_usuario_enviador_mensaje === userId ||
+            m.id_usuario_creador_chat === userId
+        ) || [];
+
+        // Only update if message count changed
+        if (userMessages.length !== mensajes.length) {
+          setMensajes(userMessages);
+        }
+      } catch {
+        // Silently fail
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [user, mensajes.length]);
 
   // Load marketplace details for messages
   useEffect(() => {
@@ -124,10 +154,10 @@ export function UserChatPage() {
   // Group messages by marketplace (for left sidebar)
   const chatsPorProducto = useMemo(() => {
     const grouped = {};
-    
+
     mensajes.forEach(mensaje => {
       const mpId = mensaje.id_marketplace;
-      
+
       if (!grouped[mpId]) {
         grouped[mpId] = {
           marketplaceId: mpId,
@@ -135,7 +165,7 @@ export function UserChatPage() {
           ultimoMensaje: null,
         };
       }
-      
+
       grouped[mpId].mensajes.push(mensaje);
       grouped[mpId].ultimoMensaje = mensaje;
     });
@@ -156,10 +186,10 @@ export function UserChatPage() {
       });
   }, [mensajes, marketplaces]);
 
-  // Get messages with selected marketplace
+  // Get messages with selected marketplace (sorted oldest first for display)
   const mensajesConProducto = useMemo(() => {
     if (!selectedMarketplaceId) return [];
-    
+
     return mensajes
       .filter(m => m.id_marketplace === selectedMarketplaceId)
       .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
@@ -186,7 +216,11 @@ export function UserChatPage() {
     try {
       const userId = user.id_usuario || user.id;
       const { data } = await mensajesApi.list({ limit: 500 });
-      const userMessages = data?.filter(m => m.id_usuario_enviador_mensaje === userId) || [];
+      const userMessages = data?.filter(
+        (m) =>
+          m.id_usuario_enviador_mensaje === userId ||
+          m.id_usuario_creador_chat === userId
+      ) || [];
       setMensajes(userMessages);
     } catch (error) {
       console.error("Error reloading messages:", error);
@@ -447,7 +481,9 @@ export function UserChatPage() {
                       </div>
                     ) : (
                       mensajesConProducto.map((mensaje, index) => {
-                        const showDate = index === 0 || 
+                        const userId = user.id_usuario || user.id;
+                        const esMio = mensaje.id_usuario_enviador_mensaje === userId;
+                        const showDate = index === 0 ||
                           formatFecha(mensaje.fecha_hora) !== formatFecha(mensajesConProducto[index - 1]?.fecha_hora);
 
                         return (
@@ -459,10 +495,23 @@ export function UserChatPage() {
                                 </span>
                               </div>
                             )}
-                            <div className="flex justify-end">
-                              <div className="max-w-md px-4 py-2 rounded-lg shadow-sm bg-blue-500 text-white rounded-br-none">
+                            <div className={`flex ${esMio ? "justify-end" : "justify-start"}`}>
+                              <div
+                                className={`max-w-md px-4 py-2 rounded-lg shadow-sm rounded-br-none ${
+                                  esMio
+                                    ? "bg-blue-500 text-white rounded-br-none"
+                                    : "bg-white text-gray-900 rounded-bl-none"
+                                }`}
+                              >
+                                {!esMio && (
+                                  <p className="text-xs font-semibold text-blue-600 mb-0.5">
+                                    {mensaje.nombre_enviador || "Vendedor"}
+                                  </p>
+                                )}
                                 <p className="text-sm break-words">{mensaje.mensaje}</p>
-                                <p className="text-xs mt-1 text-right text-blue-100">
+                                <p className={`text-xs mt-1 text-right ${
+                                  esMio ? "text-blue-100" : "text-gray-400"
+                                }`}>
                                   {formatMessageTime(mensaje.fecha_hora)}
                                 </p>
                               </div>

@@ -41,6 +41,13 @@ export const empresasApi = {
   list: (params) => http.get("/empresas/", { params }),
   get: (empresaId) => http.get(`/empresas/${empresaId}`),
   misEmpresas: (params) => http.get("/empresas/usuario/mis-empresas", { params }),
+  miEmpresa: () => http.get("/empresas/mi-empresa"),
+  updateMiEmpresa: (payload) => http.put("/empresas/mi-empresa", payload),
+  uploadLogoMiEmpresa: (archivo) => {
+    const data = new FormData();
+    data.append("archivo", archivo);
+    return http.post("/empresas/mi-empresa/logo/upload", data);
+  },
   create: (payload) => http.post("/empresas/", payload),
   update: (empresaId, payload) => http.put(`/empresas/${empresaId}`, payload),
   remove: (empresaId) => http.delete(`/empresas/${empresaId}`),
@@ -49,6 +56,9 @@ export const empresasApi = {
     data.append("archivo", archivo);
     return http.post(`/empresas/${empresaId}/logo/upload`, data);
   },
+  getUsuarios: (empresaId) => http.get(`/empresas/${empresaId}/usuarios`),
+  addUsuario: (empresaId, payload) => http.post(`/empresas/${empresaId}/usuarios`, payload),
+  removeUsuario: (empresaId, usuarioId) => http.delete(`/empresas/${empresaId}/usuarios/${usuarioId}`),
 };
 
 export const marketplaceApi = {

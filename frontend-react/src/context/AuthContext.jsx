@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
       id_usuario: data.id_usuario,
       rol: data.rol,
       id_rol: data.id_rol,
+      id_empresa: data.id_empresa || null,
       permisos: data.permisos || [],
     };
     saveSession(data.access_token, nextUser);
@@ -53,6 +54,7 @@ export function AuthProvider({ children }) {
       id_usuario: data.id_usuario,
       rol: data.rol,
       id_rol: data.id_rol,
+      id_empresa: data.id_empresa || null,
       permisos: data.permisos || [],
     };
     saveSession(data.access_token, nextUser);

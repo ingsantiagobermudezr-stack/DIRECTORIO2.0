@@ -103,7 +103,7 @@ async def login(
     # Crear token con el correo en el campo `sub` para facilitar la recuperación
     user_sub = user.correo
     rol_nombre, permisos = _extract_auth_context(user)
-    access_token = create_access_token(data={"sub": user_sub, "rol": rol_nombre, "id_usuario": user.id, "id_rol": getattr(user, 'id_rol', None)})
+    access_token = create_access_token(data={"sub": user_sub, "rol": rol_nombre, "id_usuario": user.id, "id_rol": getattr(user, 'id_rol', None), "id_empresa": getattr(user, 'id_empresa', None)})
 
     # Establecer cookies para que el SSR y el cliente las reciban.
     # Token como HttpOnly; rol y permisos accesibles si es necesario.
@@ -114,6 +114,8 @@ async def login(
     response.set_cookie(key='rol', value=str(rol_nombre), httponly=False, path='/', samesite='none', secure=secure_flag)
     # id_usuario
     response.set_cookie(key='id_usuario', value=str(user.id), httponly=False, path='/', samesite='none', secure=secure_flag)
+    # id_empresa
+    response.set_cookie(key='id_empresa', value=str(user.id_empresa) if user.id_empresa else '', httponly=False, path='/', samesite='none', secure=secure_flag)
     # permisos (serializar como JSON)
     try:
         import json
@@ -122,7 +124,7 @@ async def login(
         permisos_val = '[]'
     response.set_cookie(key='permisos', value=permisos_val, httponly=False, path='/', samesite='none', secure=secure_flag)
 
-    return {"access_token": access_token, "rol": rol_nombre, "id_usuario": user.id, "id_rol": getattr(user, 'id_rol', None), "permisos": permisos}
+    return {"access_token": access_token, "rol": rol_nombre, "id_usuario": user.id, "id_rol": getattr(user, 'id_rol', None), "id_empresa": getattr(user, 'id_empresa', None), "permisos": permisos}
 
 @router.post("/signup", response_model=SigninResponse)
 async def create_usuario(usuario: UsuarioRegister, db: AsyncSession = Depends(conexion.get_db)):

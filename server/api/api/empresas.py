@@ -5,17 +5,49 @@ from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from typing import Optional
+from pydantic import BaseModel, EmailStr, constr
 
 from api.schemas.schemas import EmpresaCreate, EmpresaResponse, EmpresaResponseGet
-from api.models.models import Empresa, Categoria, Municipio, Review
+from api.models.models import Empresa, Categoria, Municipio, Review, Usuario
 from api.db.conexion import get_db
-from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional, is_admin_user
+from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional, is_admin_user, get_current_user
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 from pathlib import Path
 from fastapi.responses import FileResponse
 
 router = APIRouter()
+
+
+# --- Schemas for company user management ---
+class UsuarioEmpresaResponse(BaseModel):
+    id: int
+    nombre: str
+    apellido: str
+    correo: str
+    id_rol: Optional[int] = None
+    id_empresa: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AddUsuarioToEmpresaRequest(BaseModel):
+    correo: EmailStr
+    nombre: constr(min_length=1, max_length=100)
+    apellido: constr(min_length=1, max_length=100)
+    password: constr(min_length=8, max_length=128)
+    id_rol: Optional[int] = None
+
+
+class MiEmpresaUpdate(BaseModel):
+    nombre: constr(min_length=2, max_length=100)
+    nit: constr(min_length=3, max_length=50, pattern=r"^[A-Za-z0-9\-]+$")
+    correo: EmailStr
+    direccion: constr(min_length=3, max_length=255)
+    telefono: constr(min_length=7, max_length=20)
+    id_categoria: int
+    id_municipio: int
 
 
 def _is_admin(user) -> bool:
@@ -163,6 +195,148 @@ async def get_mis_empresas(
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().unique().all()
 
+
+# ============================================================
+# ENDPOINTS PARA GESTIÓN DE EMPRESA (panel empresarial)
+# These must be registered BEFORE /empresas/{empresa_id} routes
+# ============================================================
+
+@router.get("/empresas/mi-empresa", response_model=EmpresaResponseGet)
+async def get_mi_empresa(
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Obtiene la empresa del usuario actual.
+    Primero busca por id_empresa (donde el usuario es miembro).
+    Si no tiene id_empresa, busca donde es el creador (id_usuario_creador).
+    """
+    empresa = None
+
+    if current_user.id_empresa:
+        query = (
+            select(Empresa)
+            .options(joinedload(Empresa.categoria), joinedload(Empresa.municipio))
+            .where(Empresa.id == current_user.id_empresa, Empresa.deleted_at.is_(None))
+        )
+        result = await db.execute(query)
+        empresa = result.scalars().first()
+
+    if not empresa:
+        query = (
+            select(Empresa)
+            .options(joinedload(Empresa.categoria), joinedload(Empresa.municipio))
+            .where(Empresa.id_usuario_creador == current_user.id, Empresa.deleted_at.is_(None))
+        )
+        result = await db.execute(query)
+        empresa = result.scalars().first()
+
+    if not empresa:
+        raise HTTPException(status_code=404, detail="No perteneces a ninguna empresa")
+
+    return empresa
+
+
+@router.put("/empresas/mi-empresa", response_model=EmpresaResponseGet)
+async def update_mi_empresa(
+    data: MiEmpresaUpdate,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Permite al creador de la empresa actualizar sus datos.
+    Busca la empresa por id_empresa o por id_usuario_creador.
+    """
+    empresa = None
+
+    if current_user.id_empresa:
+        query = select(Empresa).where(Empresa.id == current_user.id_empresa, Empresa.deleted_at.is_(None))
+        result = await db.execute(query)
+        empresa = result.scalars().first()
+
+    if not empresa:
+        query = select(Empresa).where(Empresa.id_usuario_creador == current_user.id, Empresa.deleted_at.is_(None))
+        result = await db.execute(query)
+        empresa = result.scalars().first()
+
+    if not empresa:
+        raise HTTPException(status_code=404, detail="No perteneces a ninguna empresa")
+
+    if empresa.id_usuario_creador != current_user.id and not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Solo el creador de la empresa puede modificarla")
+
+    if data.nit != empresa.nit:
+        nit_result = await db.execute(select(Empresa).where(Empresa.nit == data.nit, Empresa.id != empresa.id))
+        if nit_result.scalars().first():
+            raise HTTPException(status_code=409, detail="Ya existe una empresa con este NIT")
+
+    cat_result = await db.execute(select(Categoria).where(Categoria.id == data.id_categoria))
+    if not cat_result.scalars().first():
+        raise HTTPException(status_code=404, detail="La categoría especificada no existe")
+
+    mun_result = await db.execute(select(Municipio).where(Municipio.id == data.id_municipio))
+    if not mun_result.scalars().first():
+        raise HTTPException(status_code=404, detail="El municipio especificado no existe")
+
+    empresa.nombre = data.nombre
+    empresa.nit = data.nit
+    empresa.correo = data.correo
+    empresa.direccion = data.direccion
+    empresa.telefono = data.telefono
+    empresa.id_categoria = data.id_categoria
+    empresa.id_municipio = data.id_municipio
+
+    await db.commit()
+
+    refresh_result = await db.execute(
+        select(Empresa)
+        .options(joinedload(Empresa.categoria), joinedload(Empresa.municipio))
+        .where(Empresa.id == empresa.id)
+    )
+    return refresh_result.scalars().first()
+
+
+@router.post("/empresas/mi-empresa/logo/upload")
+async def upload_logo_mi_empresa(
+    archivo: UploadFile = File(...),
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sube logo de la empresa del usuario actual."""
+    empresa = None
+
+    if current_user.id_empresa:
+        result = await db.execute(select(Empresa).where(Empresa.id == current_user.id_empresa, Empresa.deleted_at.is_(None)))
+        empresa = result.scalars().first()
+
+    if not empresa:
+        result = await db.execute(select(Empresa).where(Empresa.id_usuario_creador == current_user.id, Empresa.deleted_at.is_(None)))
+        empresa = result.scalars().first()
+
+    if not empresa:
+        raise HTTPException(status_code=404, detail="No perteneces a ninguna empresa")
+
+    if empresa.id_usuario_creador != current_user.id and not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Solo el creador de la empresa puede subir logo")
+
+    upload_dir = ensure_upload_dir(get_upload_root(), "empresas")
+    file_name = await save_upload_file(archivo, upload_dir)
+    empresa.logo_url = build_public_url(file_name, "empresas")
+
+    await db.commit()
+    await db.refresh(empresa)
+
+    return {
+        "message": "Logo subido correctamente",
+        "empresa_id": empresa.id,
+        "logo_url": empresa.logo_url,
+    }
+
+
+# ============================================================
+# ENDPOINTS CON PATH DINÁMICO (deben ir después de los estáticos)
+# ============================================================
+
 # Leer una empresa específica
 @router.get("/empresas/{empresa_id}", response_model=EmpresaResponseGet)
 async def read_empresa(
@@ -298,3 +472,117 @@ async def get_logo_empresa(
         raise HTTPException(status_code=404, detail="Archivo de logo no encontrado")
 
     return FileResponse(path=str(file_path), filename=file_name)
+
+
+# ============================================================
+# ENDPOINTS PARA GESTIÓN DE USUARIOS DE LA EMPRESA
+# ============================================================
+
+@router.get("/empresas/{empresa_id}/usuarios", response_model=list[UsuarioEmpresaResponse])
+async def get_usuarios_empresa(
+    empresa_id: int,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Lista todos los usuarios que pertenecen a una empresa.
+    Solo el creador de la empresa o un admin pueden ver esta información.
+    """
+    result = await db.execute(
+        select(Empresa).where(Empresa.id == empresa_id, Empresa.deleted_at.is_(None))
+    )
+    empresa = result.scalars().first()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    # Solo el creador o admin pueden ver los usuarios O si pertenece a la empresa
+    if empresa.id_usuario_creador != current_user.id and not _is_admin(current_user) and current_user.id_empresa != empresa_id:
+        raise HTTPException(status_code=403, detail="Solo el creador de la empresa o un admin pueden ver los usuarios de esta empresa")
+
+    usuarios_result = await db.execute(
+        select(Usuario).where(Usuario.id_empresa == empresa_id, Usuario.deleted_at.is_(None))
+    )
+    return usuarios_result.scalars().all()
+
+
+@router.post("/empresas/{empresa_id}/usuarios", response_model=UsuarioEmpresaResponse, status_code=201)
+async def add_usuario_empresa(
+    empresa_id: int,
+    data: AddUsuarioToEmpresaRequest,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Añade un nuevo usuario a la empresa.
+    Solo el creador de la empresa o un admin pueden añadir usuarios.
+    """
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+    result = await db.execute(
+        select(Empresa).where(Empresa.id == empresa_id, Empresa.deleted_at.is_(None))
+    )
+    empresa = result.scalars().first()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    # Solo el creador o admin pueden añadir usuarios
+    if empresa.id_usuario_creador != current_user.id and not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Solo el creador de la empresa puede añadir usuarios")
+
+    # Verificar que el correo no exista
+    existing = await db.execute(select(Usuario).where(Usuario.correo == data.correo))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="Ya existe un usuario con ese correo")
+
+    hashed = pwd_context.hash(data.password)
+    db_usuario = Usuario(
+        nombre=data.nombre,
+        apellido=data.apellido,
+        correo=data.correo,
+        password=hashed,
+        id_empresa=empresa_id,
+        id_rol=data.id_rol,
+    )
+    db.add(db_usuario)
+    await db.commit()
+    await db.refresh(db_usuario)
+    return db_usuario
+
+
+@router.delete("/empresas/{empresa_id}/usuarios/{usuario_id}")
+async def remove_usuario_empresa(
+    empresa_id: int,
+    usuario_id: int,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Remueve un usuario de la empresa (soft delete).
+    Solo el creador de la empresa o un admin pueden remover usuarios.
+    """
+    result = await db.execute(
+        select(Empresa).where(Empresa.id == empresa_id, Empresa.deleted_at.is_(None))
+    )
+    empresa = result.scalars().first()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+
+    # Solo el creador o admin pueden remover usuarios
+    if empresa.id_usuario_creador != current_user.id and not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Solo el creador de la empresa puede remover usuarios")
+
+    # No puede removerse a sí mismo
+    if usuario_id == current_user.id:
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propia cuenta desde aquí")
+
+    usuario_result = await db.execute(
+        select(Usuario).where(Usuario.id == usuario_id, Usuario.id_empresa == empresa_id)
+    )
+    usuario = usuario_result.scalars().first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado en esta empresa")
+
+    usuario.deleted_at = datetime.utcnow()
+    await db.commit()
+    return {"message": "Usuario removido de la empresa correctamente"}

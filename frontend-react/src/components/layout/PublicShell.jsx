@@ -1,10 +1,10 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHeart, faRightFromBracket, faStore, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faHeart, faRightFromBracket, faStore, faUser, faBuilding } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import { useAsyncData } from "../../hooks/useAsyncData";
-import { favoritosApi } from "../../services/api";
+import { favoritosApi, empresasApi } from "../../services/api";
 
 const navItems = [
   { to: "/", label: "Inicio" },
@@ -25,10 +25,23 @@ function UserMenu() {
     }
   });
 
+  const misEmpresas = useAsyncData(async () => {
+    try {
+      const { data } = await empresasApi.misEmpresas({ limit: 1 });
+      return data || [];
+    } catch {
+      return [];
+    }
+  });
+
   const handleSignout = () => {
     signout();
     navigate("/");
   };
+
+  const isAdmin = user?.rol === "admin" && user?.permisos?.includes("modificar_roles");
+  const isCreator = misEmpresas.data && misEmpresas.data.length > 0;
+  const hasEmpresa = Boolean(user?.id_empresa) || isCreator;
 
   return (
     <div className="flex items-center gap-2">
@@ -83,13 +96,27 @@ function UserMenu() {
                 </span>
               )}
             </Link>
-            {user?.rol === "admin" || user?.permisos?.includes("crear_empresa") ? (
+            {isAdmin ? (
               <Link
                 to="/admin"
                 className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition"
               >
                 <FontAwesomeIcon icon={faStore} className="w-4" />
                 Panel Admin
+              </Link>
+            ) : null}
+            {!isAdmin && hasEmpresa ? (
+              <Link
+                to="/empresas-panel"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition"
+              >
+                <FontAwesomeIcon icon={faBuilding} className="w-4" />
+                Panel Empresa
+                {isCreator && (
+                  <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-600">
+                    {misEmpresas.data?.length || 0}
+                  </span>
+                )}
               </Link>
             ) : null}
           </div>

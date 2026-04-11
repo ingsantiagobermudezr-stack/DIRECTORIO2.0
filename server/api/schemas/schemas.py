@@ -294,6 +294,7 @@ class SigninResponse(BaseModel):
     rol: Optional[str] = None
     id_usuario: int
     id_rol: Optional[int] = None
+    id_empresa: Optional[int] = None
     permisos: Optional[list[str]] = None
 
 class PerfilUpdate(BaseModel):

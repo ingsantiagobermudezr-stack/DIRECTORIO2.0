@@ -28,6 +28,13 @@ import { PublicPerfilPage } from "./pages/PublicPerfilPage";
 import { ChatRoomsPage } from "./pages/ChatRoomsPage";
 import { ChatRoomDetailPage } from "./pages/ChatRoomDetailPage";
 import { UserChatPage } from "./pages/UserChatPage";
+import { EmpresaShell } from "./components/layout/EmpresaShell";
+import { EmpresaDashboardPage } from "./pages/EmpresaDashboardPage";
+import { MiEmpresaPage } from "./pages/MiEmpresaPage";
+import { EquipoPage } from "./pages/EquipoPage";
+import { EmpresaMarketplacePage } from "./pages/EmpresaMarketplacePage";
+import { EmpresaPublicidadesPage } from "./pages/EmpresaPublicidadesPage";
+import { EmpresaChatsPage } from "./pages/EmpresaChatsPage";
 
 function App() {
   return (
@@ -49,7 +56,9 @@ function App() {
           path="/admin"
           element={
             <ProtectedRoute>
-              <AppShell />
+              <PermissionGate adminOnly fallback={<Navigate to="/" replace />}>
+                <AppShell />
+              </PermissionGate>
             </ProtectedRoute>
           }
         >
@@ -65,7 +74,7 @@ function App() {
             path="reportes"
             element={
               <PermissionGate
-                anyOf={["ver_reportes"]}
+                allOf={["ver_reportes"]}
                 fallback={<Navigate to="/admin" replace />}
               >
                 <ReportesPage />
@@ -73,20 +82,31 @@ function App() {
             }
           />
           <Route path="publicidades" element={<PublicidadesPage />} />
-          <Route
-            path="admin-live"
-            element={
-              <PermissionGate adminOnly fallback={<Navigate to="/admin" replace />}>
-                <AdminLivePage />
-              </PermissionGate>
-            }
-          />
+          <Route path="admin-live" element={<AdminLivePage />} />
           <Route path="notificaciones" element={<NotificacionesPage />} />
           <Route path="chat" element={<ChatRoomsPage />} />
           <Route path="chat/:marketplaceId" element={<ChatRoomDetailPage />} />
           <Route path="perfil" element={<PerfilPage />} />
         </Route>
         <Route path="mis-chats" element={<UserChatPage />} />
+
+        {/* Panel Empresa - For business owners */}
+        <Route
+          path="/empresas-panel"
+          element={
+            <ProtectedRoute>
+              <EmpresaShell />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<EmpresaDashboardPage />} />
+          <Route path="mi-empresa" element={<MiEmpresaPage />} />
+          <Route path="equipo" element={<EquipoPage />} />
+          <Route path="marketplace" element={<EmpresaMarketplacePage />} />
+          <Route path="publicidades" element={<EmpresaPublicidadesPage />} />
+          <Route path="chats" element={<EmpresaChatsPage />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ToastContainer
