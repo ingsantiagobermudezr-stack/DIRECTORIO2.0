@@ -20,9 +20,39 @@ export function UserChatPage() {
   const [marketplaces, setMarketplaces] = useState([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("todos"); // todos | pendientes | enviados
   
   const ws = useRef(null);
   const mensajesEndRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const prevCountRef = useRef(0);
+
+  // Play notification sound using Web Audio API
+  const playNotificationSound = () => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") ctx.resume();
+
+      // Two short beeps (like WhatsApp)
+      [0, 0.15].forEach((delay) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.12);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.12);
+      });
+    } catch {
+      // Audio not available
+    }
+  };
 
   // Load user's messages (both sent AND received)
   useEffect(() => {
@@ -66,9 +96,16 @@ export function UserChatPage() {
             m.id_usuario_creador_chat === userId
         ) || [];
 
-        // Only update if message count changed
+        // Only update if message count changed AND new messages are received ones
         if (userMessages.length !== mensajes.length) {
+          const lastMsg = userMessages[userMessages.length - 1];
+          const isReceived = lastMsg?.id_usuario_enviador_mensaje !== userId;
+
           setMensajes(userMessages);
+          if (isReceived && prevCountRef.current > 0) {
+            playNotificationSound();
+          }
+          prevCountRef.current = userMessages.length;
         }
       } catch {
         // Silently fail
@@ -167,7 +204,12 @@ export function UserChatPage() {
       }
 
       grouped[mpId].mensajes.push(mensaje);
-      grouped[mpId].ultimoMensaje = mensaje;
+    });
+
+    // Sort messages within each chat by fecha_hora and set ultimoMensaje
+    Object.values(grouped).forEach((chat) => {
+      chat.mensajes.sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+      chat.ultimoMensaje = chat.mensajes[chat.mensajes.length - 1];
     });
 
     // Enrich with marketplace data
@@ -340,11 +382,22 @@ export function UserChatPage() {
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Mis Chats</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Conversaciones con vendedores sobre productos
-              </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate("/")}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Volver
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Mis Chats</h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Conversaciones con vendedores sobre productos
+                </p>
+              </div>
             </div>
             {wsConnected && (
               <span className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded-full flex items-center gap-2">
@@ -364,9 +417,42 @@ export function UserChatPage() {
                 <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Productos ({chatsPorProducto.length})
                 </h2>
+                {/* Filter Tabs */}
+                <div className="mt-2 flex gap-1">
+                  {[
+                    { key: "todos", label: "Todos" },
+                    { key: "pendientes", label: "Respuestas" },
+                    { key: "enviados", label: "Enviados" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setStatusFilter(tab.key)}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-[10px] font-medium transition ${
+                        statusFilter === tab.key
+                          ? "bg-blue-500 text-white shadow-sm"
+                          : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {chatsPorProducto.length === 0 ? (
+              {(() => {
+                const userId = user.id_usuario || user.id;
+                let filteredChats = chatsPorProducto;
+                if (statusFilter === "pendientes") {
+                  filteredChats = chatsPorProducto.filter(
+                    (chat) => chat.ultimoMensaje?.id_usuario_enviador_mensaje !== userId
+                  );
+                } else if (statusFilter === "enviados") {
+                  filteredChats = chatsPorProducto.filter(
+                    (chat) => chat.ultimoMensaje?.id_usuario_enviador_mensaje === userId
+                  );
+                }
+
+                return filteredChats.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-500 p-6 text-center">
                   <svg className="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -381,16 +467,39 @@ export function UserChatPage() {
                   </button>
                 </div>
               ) : (
-                chatsPorProducto.map((chat) => {
+                filteredChats.map((chat) => {
                   const imageUrl = getImageUrl(chat.marketplace.imagenes);
+                  const userId = user.id_usuario || user.id;
+                  const lastMsgFromSeller = chat.ultimoMensaje?.id_usuario_enviador_mensaje !== userId;
+                  const hasNewReply = lastMsgFromSeller && selectedMarketplaceId !== chat.marketplaceId;
+
                   return (
                     <div
                       key={chat.marketplaceId}
                       onClick={() => setSelectedMarketplaceId(chat.marketplaceId)}
-                      className={`flex items-start gap-3 p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
-                        selectedMarketplaceId === chat.marketplaceId ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      className={`flex items-start gap-3 p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 relative ${
+                        selectedMarketplaceId === chat.marketplaceId
+                          ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                          : hasNewReply
+                          ? 'bg-amber-50 border-l-4 border-l-amber-400'
+                          : ''
                       }`}
                     >
+                      {hasNewReply && (
+                        <div className="absolute top-2 right-2">
+                          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                            Nueva respuesta
+                          </span>
+                        </div>
+                      )}
+                      {!hasNewReply && chat.ultimoMensaje && selectedMarketplaceId !== chat.marketplaceId && (
+                        <div className="absolute top-2 right-2">
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                            Esperando
+                          </span>
+                        </div>
+                      )}
                       {/* Product Image */}
                       <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
                         {imageUrl ? (
@@ -403,26 +512,27 @@ export function UserChatPage() {
                       </div>
 
                       {/* Chat Info */}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pr-20">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-gray-900 truncate text-sm">
+                          <h3 className={`truncate text-sm ${hasNewReply ? "font-bold text-amber-900" : "font-semibold text-gray-900"}`}>
                             {chat.marketplace.nombre}
                           </h3>
-                          <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                          <span className={`text-xs flex-shrink-0 ml-2 ${hasNewReply ? "text-amber-600 font-medium" : "text-gray-500"}`}>
                             {formatPreviewFecha(chat.ultimoMensaje?.fecha_hora)}
                           </span>
                         </div>
                         <p className="text-xs text-gray-600 truncate">
                           {chat.marketplace.empresa?.nombre}
                         </p>
-                        <p className="text-sm text-gray-700 truncate mt-1 font-medium">
+                        <p className={`truncate mt-1 text-sm ${hasNewReply ? "text-amber-700 font-medium" : "text-gray-700 font-medium"}`}>
                           {chat.ultimoMensaje?.mensaje}
                         </p>
                       </div>
                     </div>
                   );
                 })
-              )}
+              );
+              })()}
             </div>
 
             {/* Right Side - Chat Area */}

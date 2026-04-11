@@ -13,6 +13,14 @@ import { useToast } from "../context/ToastContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { Loading } from "../components/common/Loading";
 import { EmptyState } from "../components/common/EmptyState";
+import { API_BASE_URL } from "../config/env";
+
+const getImageUrl = (imagenes, index = 0) => {
+  if (!imagenes || imagenes.length === 0) return null;
+  const img = typeof imagenes[index] === "string" ? imagenes[index] : imagenes[index].imagen_url || imagenes[index].url;
+  if (!img) return null;
+  return img.startsWith("/") ? `${API_BASE_URL}${img}` : `${API_BASE_URL}/${img}`;
+};
 
 export function EmpresaChatsPage() {
   const { user } = useAuth();
@@ -24,7 +32,39 @@ export function EmpresaChatsPage() {
   const [nuevoMensaje, setNuevoMensaje] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos"); // todos | pendientes | respondidos
   const mensajesEndRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const prevMsgCountRef = useRef(0);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  // Play notification sound using Web Audio API
+  const playNotificationSound = () => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") ctx.resume();
+
+      // Two short beeps (like WhatsApp)
+      [0, 0.15].forEach((delay) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.12);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.12);
+      });
+    } catch {
+      // Audio not available
+    }
+  };
 
   // Load user's company
   const miEmpresa = useAsyncData(async () => {
@@ -119,9 +159,16 @@ export function EmpresaChatsPage() {
           .filter((m) => m.id_usuario_creador_chat === selectedConv.clientId)
           .reverse();
 
-        // Only update if message count changed (avoid unnecessary re-renders)
+        // Only update if message count changed
         if (mensajesConv.length !== mensajes.length) {
+          const isReceived = mensajesConv[0]?.id_usuario_enviador_mensaje !== String(user?.id_usuario);
+
           setMensajes(mensajesConv);
+          if (isReceived && prevMsgCountRef.current > 0) {
+            playNotificationSound();
+          }
+          prevMsgCountRef.current = mensajesConv.length;
+
           setSelectedConv((prev) => ({
             ...prev,
             ultimoMensaje: mensajesConv[0] || prev.ultimoMensaje,
@@ -189,8 +236,13 @@ export function EmpresaChatsPage() {
 
           const conv = convMap.get(key);
           conv.mensajes.push(msg);
-          conv.ultimoMensaje = msg;
           conv.cantidadMensajes++;
+        });
+
+        // Sort messages within each conversation by fecha_hora and set ultimoMensaje
+        convMap.forEach((conv) => {
+          conv.mensajes.sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+          conv.ultimoMensaje = conv.mensajes[conv.mensajes.length - 1];
         });
 
         const convList = Array.from(convMap.values()).sort((a, b) => {
@@ -307,14 +359,33 @@ export function EmpresaChatsPage() {
 
   // Filter conversations
   const filteredConvs = useMemo(() => {
-    if (!searchFilter) return conversaciones;
-    const filter = searchFilter.toLowerCase();
-    return conversaciones.filter(
-      (conv) =>
-        conv.marketplace?.nombre?.toLowerCase().includes(filter) ||
-        conv.marketplace?.empresa?.nombre?.toLowerCase().includes(filter)
-    );
-  }, [conversaciones, searchFilter]);
+    let result = conversaciones;
+
+    // Status filter
+    if (statusFilter === "pendientes") {
+      result = result.filter((conv) => {
+        const lastMsg = conv.ultimoMensaje;
+        return lastMsg && String(lastMsg.id_usuario_enviador_mensaje) === String(conv.clientId);
+      });
+    } else if (statusFilter === "respondidos") {
+      result = result.filter((conv) => {
+        const lastMsg = conv.ultimoMensaje;
+        return lastMsg && String(lastMsg.id_usuario_enviador_mensaje) !== String(conv.clientId);
+      });
+    }
+
+    // Search filter
+    if (searchFilter) {
+      const filter = searchFilter.toLowerCase();
+      result = result.filter(
+        (conv) =>
+          conv.marketplace?.nombre?.toLowerCase().includes(filter) ||
+          conv.marketplace?.empresa?.nombre?.toLowerCase().includes(filter)
+      );
+    }
+
+    return result;
+  }, [conversaciones, searchFilter, statusFilter]);
 
   if (loading || miEmpresa.loading) {
     return <Loading />;
@@ -357,6 +428,26 @@ export function EmpresaChatsPage() {
               onChange={(e) => setSearchFilter(e.target.value)}
             />
           </div>
+          {/* Filter Tabs */}
+          <div className="mt-3 flex gap-1">
+            {[
+              { key: "todos", label: "Todos" },
+              { key: "pendientes", label: "Pendientes" },
+              { key: "respondidos", label: "Respondidos" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition ${
+                  statusFilter === tab.key
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Conversation List */}
@@ -374,31 +465,66 @@ export function EmpresaChatsPage() {
               </p>
             </div>
           ) : (
-            filteredConvs.map((conv) => (
+            filteredConvs.map((conv) => {
+              const lastMsg = conv.ultimoMensaje;
+              const isFromClient = lastMsg && String(lastMsg.id_usuario_enviador_mensaje) === String(conv.clientId);
+              const needsReply = isFromClient && selectedConv?.id !== conv.id;
+
+              return (
               <button
                 key={conv.id}
                 onClick={() => cargarMensajes(conv)}
-                className={`w-full border-b border-slate-100 p-4 text-left transition hover:bg-slate-50 ${
-                  selectedConv?.id === conv.id ? "bg-teal-50" : ""
+                className={`w-full border-b border-slate-100 p-4 text-left transition hover:bg-slate-50 relative ${
+                  selectedConv?.id === conv.id
+                    ? "bg-teal-50"
+                    : needsReply
+                    ? "bg-amber-50 border-l-4 border-l-amber-400"
+                    : ""
                 }`}
               >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-sm font-bold text-white">
-                    {conv.marketplace?.nombre?.[0]?.toUpperCase() || "?"}
+                {needsReply && (
+                  <div className="absolute top-2 right-2">
+                    <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      Espera respuesta
+                    </span>
                   </div>
-                  <div className="min-w-0 flex-1">
+                )}
+                {!needsReply && lastMsg && selectedConv?.id !== conv.id && (
+                  <div className="absolute top-2 right-2">
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                      Respondido
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
+                  {(() => {
+                    const imageUrl = getImageUrl(conv.marketplace?.imagenes);
+                    return imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={conv.marketplace?.nombre}
+                        className="h-10 w-10 shrink-0 rounded-lg object-cover bg-slate-100"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-sm font-bold text-white">
+                        {conv.marketplace?.nombre?.[0]?.toUpperCase() || "?"}
+                      </div>
+                    );
+                  })()}
+                  <div className="min-w-0 flex-1 pr-20">
                     <div className="flex items-center justify-between">
-                      <p className="truncate font-semibold text-slate-900">
+                      <p className={`truncate text-sm ${needsReply ? "font-bold text-amber-900" : "font-semibold text-slate-900"}`}>
                         {conv.marketplace?.nombre || "Producto"}
                       </p>
                       {conv.ultimoMensaje?.fecha_hora && (
-                        <span className="ml-2 shrink-0 text-xs text-slate-400">
+                        <span className={`ml-2 shrink-0 text-xs ${needsReply ? "text-amber-600 font-medium" : "text-slate-400"}`}>
                           {formatFecha(conv.ultimoMensaje.fecha_hora)}
                         </span>
                       )}
                     </div>
                     <div className="mt-0.5 flex items-center justify-between">
-                      <p className="truncate text-xs text-slate-500">
+                      <p className={`truncate text-xs ${needsReply ? "text-amber-700 font-medium" : "text-slate-500"}`}>
                         {conv.ultimoMensaje?.mensaje || "Sin mensajes"}
                       </p>
                       {conv.cantidadMensajes > 0 && (
@@ -413,7 +539,8 @@ export function EmpresaChatsPage() {
                   </div>
                 </div>
               </button>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -430,9 +557,20 @@ export function EmpresaChatsPage() {
               >
                 <FontAwesomeIcon icon={faArrowLeft} />
               </button>
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-sm font-bold text-white">
-                {selectedConv.marketplace?.nombre?.[0]?.toUpperCase() || "?"}
-              </div>
+              {(() => {
+                const imageUrl = getImageUrl(selectedConv.marketplace?.imagenes);
+                return imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={selectedConv.marketplace?.nombre}
+                    className="h-10 w-10 shrink-0 rounded-lg object-cover bg-gray-100"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-sm font-bold text-white">
+                    {selectedConv.marketplace?.nombre?.[0]?.toUpperCase() || "?"}
+                  </div>
+                );
+              })()}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-slate-900">
                   {selectedConv.marketplace?.nombre || "Producto"}
@@ -444,6 +582,15 @@ export function EmpresaChatsPage() {
                     : ""}
                 </p>
               </div>
+              <button
+                onClick={() => {
+                  setShowProductModal(true);
+                  setSelectedImageIndex(0);
+                }}
+                className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+              >
+                Info
+              </button>
             </div>
 
             {/* Messages */}
@@ -546,6 +693,150 @@ export function EmpresaChatsPage() {
           </div>
         )}
       </div>
+
+      {/* Product Info Modal */}
+      {showProductModal && selectedConv?.marketplace && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => {
+            setShowProductModal(false);
+            setSelectedImageIndex(0);
+          }}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[95vh] overflow-y-auto rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              {/* Close button */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Información del Producto</h2>
+                <button
+                  onClick={() => {
+                    setShowProductModal(false);
+                    setSelectedImageIndex(0);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Product Images Gallery */}
+              {selectedConv.marketplace.imagenes && selectedConv.marketplace.imagenes.length > 0 && (
+                <div className="mb-6">
+                  {/* Main Image */}
+                  <div className="mb-4 rounded-lg overflow-hidden bg-slate-100">
+                    <img
+                      src={getImageUrl(selectedConv.marketplace.imagenes, selectedImageIndex)}
+                      alt={selectedConv.marketplace.nombre}
+                      className="w-full h-auto max-h-[400px] object-contain"
+                    />
+                  </div>
+
+                  {/* Thumbnails */}
+                  {selectedConv.marketplace.imagenes.length > 1 && (
+                    <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                      {selectedConv.marketplace.imagenes.map((img, index) => {
+                        const imgUrl = typeof img === "string" ? img : img.imagen_url || img.url;
+                        const fullUrl = imgUrl
+                          ? imgUrl.startsWith("/") ? `${API_BASE_URL}${imgUrl}` : `${API_BASE_URL}/${imgUrl}`
+                          : null;
+                        const isSelected = selectedImageIndex === index;
+
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setSelectedImageIndex(index)}
+                            className={`rounded-lg overflow-hidden border-2 transition-all aspect-square bg-slate-100 ${
+                              isSelected
+                                ? "border-teal-500 ring-2 ring-teal-200"
+                                : "border-transparent hover:border-teal-300"
+                            }`}
+                          >
+                            {fullUrl ? (
+                              <img
+                                src={fullUrl}
+                                alt={`${selectedConv.marketplace.nombre} - Imagen ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Product Details */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900">{selectedConv.marketplace.nombre}</h3>
+                  <p className="text-2xl font-bold text-teal-600 mt-2">
+                    ${selectedConv.marketplace.precio?.toLocaleString()}
+                  </p>
+                </div>
+
+                {selectedConv.marketplace.descripcion && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-1">Descripción</h4>
+                    <p className="text-slate-600">{selectedConv.marketplace.descripcion}</p>
+                  </div>
+                )}
+
+                {selectedConv.marketplace.stock !== undefined && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-1">Stock disponible</h4>
+                    <p className="text-slate-600">{selectedConv.marketplace.stock} unidades</p>
+                  </div>
+                )}
+
+                {selectedConv.marketplace.empresa && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-1">Empresa</h4>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <span className="text-slate-600">{selectedConv.marketplace.empresa.nombre}</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedConv.marketplace.categoria && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-1">Categoría</h4>
+                    <span className="inline-block rounded-full bg-teal-100 px-3 py-1 text-xs font-medium text-teal-700">
+                      {selectedConv.marketplace.categoria.nombre}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowProductModal(false);
+                      setSelectedImageIndex(0);
+                    }}
+                    className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
