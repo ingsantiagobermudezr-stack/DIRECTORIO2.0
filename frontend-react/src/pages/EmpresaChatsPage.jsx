@@ -35,6 +35,8 @@ export function EmpresaChatsPage() {
   const [enviando, setEnviando] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos"); // todos | pendientes | respondidos
+  const [productFilter, setProductFilter] = useState(null); // null = todos, id = producto especifico
+  const [showProductFilter, setShowProductFilter] = useState(false);
   const mensajesEndRef = useRef(null);
   const audioCtxRef = useRef(null);
   const prevMsgCountRef = useRef(0);
@@ -69,7 +71,7 @@ export function EmpresaChatsPage() {
   };
 
   // Load user's company
-  const miEmpresa = useAsyncData(async () => {
+  const empresaState = useAsyncData(async () => {
     try {
       const { data } = await empresasApi.miEmpresa();
       return data;
@@ -84,7 +86,7 @@ export function EmpresaChatsPage() {
 
   const reloadConversaciones = async () => {
     try {
-      const empresaId = miEmpresa.data?.id;
+      const empresaId = empresaState.data?.id;
       if (!empresaId) return;
 
       const { data: marketplaces } = await marketplaceApi.list({
@@ -143,7 +145,7 @@ export function EmpresaChatsPage() {
 
   useWebSocketBackoff({
     url: wsUrl,
-    enabled: !!userId && !!miEmpresa.data,
+    enabled: !!userId,
     onMessage: async (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -178,11 +180,11 @@ export function EmpresaChatsPage() {
 
   // Polling: Reload conversation list every 10 seconds
   useEffect(() => {
-    if (!miEmpresa.data) return;
+    if (!empresaState.data) return;
 
     const interval = setInterval(async () => {
       try {
-        const empresaId = miEmpresa.data?.id;
+        const empresaId = empresaState.data?.id;
         if (!empresaId) return;
 
         const { data: marketplaces } = await marketplaceApi.list({
@@ -240,7 +242,7 @@ export function EmpresaChatsPage() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [miEmpresa.data]);
+  }, [empresaState.data]);
 
   // Polling: Reload messages every 5 seconds when a conversation is selected
   useEffect(() => {
@@ -284,7 +286,7 @@ export function EmpresaChatsPage() {
   useEffect(() => {
     const loadConversaciones = async () => {
       try {
-        const empresaId = miEmpresa.data?.id;
+        const empresaId = empresaState.data?.id;
         if (!empresaId) {
           setConversaciones([]);
           setLoading(false);
@@ -361,10 +363,10 @@ export function EmpresaChatsPage() {
       }
     };
 
-    if (miEmpresa.data) {
+    if (empresaState.data) {
       loadConversaciones();
     }
-  }, [miEmpresa.data, pushToast]);
+  }, [empresaState.data, pushToast]);
 
   // Load messages for selected conversation
   const cargarMensajes = async (conv) => {
@@ -458,6 +460,11 @@ export function EmpresaChatsPage() {
   const filteredConvs = useMemo(() => {
     let result = conversaciones;
 
+    // Product filter
+    if (productFilter !== null) {
+      result = result.filter((conv) => conv.marketplaceId === productFilter);
+    }
+
     // Status filter
     if (statusFilter === "pendientes") {
       result = result.filter((conv) => {
@@ -482,13 +489,13 @@ export function EmpresaChatsPage() {
     }
 
     return result;
-  }, [conversaciones, searchFilter, statusFilter]);
+  }, [conversaciones, searchFilter, statusFilter, productFilter]);
 
-  if (loading || miEmpresa.loading) {
+  if (loading || empresaState.loading) {
     return <Loading />;
   }
 
-  if (!miEmpresa.data) {
+  if (!empresaState.data) {
     return (
       <EmptyState
         title="Sin empresa"
@@ -511,7 +518,7 @@ export function EmpresaChatsPage() {
             <FontAwesomeIcon icon={faComments} className="text-slate-600" />
             <h3 className="text-lg font-semibold text-slate-900">Chats con Clientes</h3>
           </div>
-          <p className="mt-1 text-xs text-slate-500">{miEmpresa.data.nombre}</p>
+          <p className="mt-1 text-xs text-slate-500">{empresaState.data.nombre}</p>
           {/* Search */}
           <div className="mt-3 relative">
             <FontAwesomeIcon
@@ -545,6 +552,105 @@ export function EmpresaChatsPage() {
               </button>
             ))}
           </div>
+
+          {/* Product Filter with Images */}
+          {conversaciones.length > 0 && (
+            <div className="mt-3 relative">
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Filtrar por producto</label>
+              
+              {/* Trigger Button */}
+              <button
+                onClick={() => setShowProductFilter(!showProductFilter)}
+                className="w-full flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-2 px-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 hover:bg-slate-50 transition"
+              >
+                {productFilter ? (() => {
+                  const selectedMp = conversaciones.find(c => c.marketplaceId === productFilter)?.marketplace;
+                  const imageUrl = getImageUrl(selectedMp?.imagenes);
+                  return (
+                    <>
+                      {imageUrl ? (
+                        <img src={imageUrl} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="h-6 w-6 rounded bg-slate-200 flex items-center justify-center flex-shrink-0">
+                          <FontAwesomeIcon icon={faStore} className="text-slate-400 text-xs" />
+                        </div>
+                      )}
+                      <span className="truncate flex-1 text-left">{selectedMp?.nombre || 'Producto'}</span>
+                      <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </>
+                  );
+                })() : (
+                  <>
+                    <div className="h-6 w-6 rounded bg-slate-200 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 6l8 8 8-8M6 6v12a2 2 0 002 2h8a2 2 0 002-2V6" />
+                      </svg>
+                    </div>
+                    <span className="truncate flex-1 text-left text-slate-500">Todos los productos</span>
+                    <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+
+              {/* Dropdown */}
+              {showProductFilter && (
+                <>
+                  {/* Backdrop */}
+                  <div className="fixed inset-0 z-10" onClick={() => setShowProductFilter(false)} />
+                  
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-64 overflow-y-auto">
+                    <button
+                      onClick={() => {
+                        setProductFilter(null);
+                        setShowProductFilter(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition ${
+                        productFilter === null ? 'bg-teal-50 text-teal-700' : ''
+                      }`}
+                    >
+                      <div className="h-8 w-8 rounded bg-slate-200 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 6l8 8 8-8M6 6v12a2 2 0 002 2h8a2 2 0 002-2V6" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium">Todos los productos</span>
+                    </button>
+                    
+                    {[...new Map(conversaciones.map(c => [c.marketplaceId, c.marketplace])).values()]
+                      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+                      .map(mp => {
+                        const imageUrl = getImageUrl(mp?.imagenes);
+                        return (
+                          <button
+                            key={mp.id}
+                            onClick={() => {
+                              setProductFilter(mp.id);
+                              setShowProductFilter(false);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition ${
+                              productFilter === mp.id ? 'bg-teal-50 text-teal-700' : ''
+                            }`}
+                          >
+                            {imageUrl ? (
+                              <img src={imageUrl} alt="" className="h-8 w-8 rounded object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="h-8 w-8 rounded bg-slate-200 flex items-center justify-center flex-shrink-0">
+                                <FontAwesomeIcon icon={faStore} className="text-slate-400 text-xs" />
+                              </div>
+                            )}
+                            <span className="text-sm truncate flex-1 text-left">{mp.nombre || 'Producto sin nombre'}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Conversation List */}
