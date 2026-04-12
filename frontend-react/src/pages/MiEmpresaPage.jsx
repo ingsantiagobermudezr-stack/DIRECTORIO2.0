@@ -111,11 +111,14 @@ export function MiEmpresaPage() {
       return;
     }
     try {
-      await empresasApi.uploadLogoMiEmpresa(logoArchivo);
+      console.log("Subiendo logo:", logoArchivo.name, logoArchivo.type, logoArchivo.size);
+      const response = await empresasApi.uploadLogoMiEmpresa(logoArchivo);
+      console.log("Respuesta del backend:", response.data);
       pushToast({ title: "Logo actualizado", message: "Archivo subido correctamente", type: "success" });
       setLogoArchivo(null);
       miEmpresa.reload();
     } catch (error) {
+      console.error("Error subiendo logo:", error);
       pushToast({ title: "Error", message: error?.response?.data?.detail || "No se pudo subir logo", type: "error" });
     }
   };
@@ -151,7 +154,7 @@ export function MiEmpresaPage() {
         <div className="flex items-center gap-4">
           {miEmpresa.data.logo_url ? (
             <img
-              src={`${API_BASE_URL}/empresas/${miEmpresa.data.id}/logo`}
+              src={`${API_BASE_URL}/empresas/${miEmpresa.data.id}/logo?v=${Date.now()}`}
               alt="Logo"
               className="h-24 w-24 rounded-xl border border-slate-200 object-cover"
             />
@@ -177,20 +180,28 @@ export function MiEmpresaPage() {
       {isCreator && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Subir logo</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input
-              className="rounded-xl border border-slate-300 px-3 py-2"
-              type="file"
-              accept="image/*"
-              onChange={(e) => setLogoArchivo(e.target.files?.[0] || null)}
-            />
-            <button
-              className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
-              onClick={subirLogo}
-            >
-              <FontAwesomeIcon icon={faUpload} />
-              Subir logo
-            </button>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-4 py-2 hover:border-teal-500 hover:bg-teal-50 transition">
+              <FontAwesomeIcon icon={faImage} className="text-slate-500" />
+              <span className="text-sm text-slate-700">
+                {logoArchivo ? logoArchivo.name : "Seleccionar imagen"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setLogoArchivo(e.target.files?.[0] || null)}
+                className="hidden"
+              />
+            </label>
+            {logoArchivo && (
+              <button
+                className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
+                onClick={subirLogo}
+              >
+                <FontAwesomeIcon icon={faUpload} />
+                Subir logo
+              </button>
+            )}
           </div>
         </div>
       )}

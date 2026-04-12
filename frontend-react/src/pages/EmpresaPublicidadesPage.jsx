@@ -47,7 +47,7 @@ export function EmpresaPublicidadesPage() {
   const publicidades = useAsyncData(async () => {
     const { data } = await publicidadesApi.list({ limit: 100 });
     return data || [];
-  }, []);
+  }, null);
 
   const tiposAnuncio = useAsyncData(async () => (await catalogosApi.tiposAnuncio({ limit: 100 })).data);
 

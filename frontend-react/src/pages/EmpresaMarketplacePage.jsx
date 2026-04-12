@@ -173,7 +173,7 @@ export function EmpresaMarketplacePage() {
       });
       pushToast({ title: "Producto creado", message: "Alta de marketplace exitosa", type: "success" });
       resetForm();
-      marketplace.reload();
+      reloadMarketplace();
     } catch (error) {
       pushToast({ title: "Error", message: error?.response?.data?.detail || "No se pudo crear", type: "error" });
     }
@@ -218,7 +218,7 @@ export function EmpresaMarketplacePage() {
       });
       pushToast({ title: "Producto actualizado", message: "Cambios guardados", type: "success" });
       await cerrarModal();
-      marketplace.reload();
+      reloadMarketplace();
     } catch (error) {
       pushToast({ title: "Error", message: error?.response?.data?.detail || "No se pudo actualizar", type: "error" });
     }
@@ -230,7 +230,7 @@ export function EmpresaMarketplacePage() {
     try {
       await marketplaceApi.remove(idMarketplace);
       pushToast({ title: "Producto eliminado", message: "Producto desactivado", type: "success" });
-      marketplace.reload();
+      reloadMarketplace();
     } catch (error) {
       pushToast({ title: "Error", message: error?.response?.data?.detail || "No se pudo eliminar", type: "error" });
     }
@@ -260,7 +260,7 @@ export function EmpresaMarketplacePage() {
       pushToast({ title: "Imágenes subidas", message: `${selectedImages.length} imagen(es) cargada(s)`, type: "success" });
       setSelectedImages([]);
       setPreviewUrls([]);
-      marketplace.reload();
+      reloadMarketplace();
     } catch (error) {
       pushToast({ title: "Error", message: error?.response?.data?.detail || "No se pudieron subir imágenes", type: "error" });
     }
@@ -296,7 +296,7 @@ export function EmpresaMarketplacePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button className="rounded-xl bg-slate-900 px-4 py-2 text-white" onClick={marketplace.reload}>
+          <button className="rounded-xl bg-slate-900 px-4 py-2 text-white" onClick={reloadMarketplace}>
             Refrescar
           </button>
         </div>

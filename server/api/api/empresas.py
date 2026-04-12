@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr, constr
 
 from api.schemas.schemas import EmpresaCreate, EmpresaResponse, EmpresaResponseGet
-from api.models.models import Empresa, Categoria, Municipio, Review, Usuario
+from api.models.models import Empresa, Categoria, Municipio, Review, Usuario, Rol
 from api.db.conexion import get_db
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional, is_admin_user, get_current_user
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
@@ -548,6 +548,13 @@ async def add_usuario_empresa(
     if existing.scalars().first():
         raise HTTPException(status_code=400, detail="Ya existe un usuario con ese correo")
 
+    # Buscar el rol de 'usuario' por defecto (nunca permitir asignar admin)
+    rol_usuario_result = await db.execute(
+        select(Rol).where(func.lower(Rol.nombre) == "usuario", Rol.deleted_at.is_(None))
+    )
+    rol_usuario = rol_usuario_result.scalars().first()
+    id_rol_default = rol_usuario.id if rol_usuario else None
+
     hashed = pwd_context.hash(data.password)
     db_usuario = Usuario(
         nombre=data.nombre,
@@ -555,7 +562,7 @@ async def add_usuario_empresa(
         correo=data.correo,
         password=hashed,
         id_empresa=empresa_id,
-        id_rol=data.id_rol,
+        id_rol=id_rol_default,  # Siempre rol de usuario por seguridad
     )
     db.add(db_usuario)
     await db.commit()

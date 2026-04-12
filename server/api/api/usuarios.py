@@ -6,9 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db.conexion import get_db
-from api.models.models import Rol, Usuario
+from api.models.models import Rol, Usuario, Empresa
 from api.schemas.schemas import UsuarioCreate, UsuarioResponse, UsuarioUpdate
-from api.api.auth import can_view_deleted_records, require_permission
+from api.api.auth import can_view_deleted_records, require_permission, is_admin_user, get_current_user
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -77,18 +77,48 @@ async def read_usuario(
 async def update_usuario(
     usuario_id: int,
     usuario: UsuarioUpdate,
-    current_user = Depends(require_permission(Permisos.MODIFICAR_USUARIOS)),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    # Allow admins OR empresa owners to update their team members
+    is_admin = is_admin_user(current_user)
+    
     result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
     db_usuario = result.scalars().first()
     if not db_usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # If not admin, check if current user owns the empresa the user belongs to
+    if not is_admin:
+        if not db_usuario.id_empresa:
+            raise HTTPException(
+                status_code=403,
+                detail="No tienes permisos para modificar este usuario"
+            )
+        
+        empresa_result = await db.execute(
+            select(Empresa).where(
+                Empresa.id == db_usuario.id_empresa,
+                Empresa.id_usuario_creador == current_user.id,
+                Empresa.deleted_at.is_(None)
+            )
+        )
+        empresa = empresa_result.scalars().first()
+        if not empresa:
+            raise HTTPException(
+                status_code=403,
+                detail="No tienes permisos para modificar este usuario"
+            )
 
     update_data = usuario.model_dump(exclude_unset=True)
+    
+    # Hash password if provided
+    if "password" in update_data and update_data["password"]:
+        update_data["password"] = pwd_context.hash(update_data["password"])
+    
     if "id_rol" in update_data:
         new_id_rol = update_data.pop("id_rol")
-        if new_id_rol is not None:
+        if new_id_rol is not None and is_admin:
             role_result = await db.execute(select(Rol).where(Rol.id == new_id_rol))
             role = role_result.scalars().first()
             if role:

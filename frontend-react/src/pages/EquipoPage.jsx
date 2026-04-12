@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUserPlus, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faUserPlus, faTrash, faUsers, faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { DataTable } from "../components/common/DataTable";
 import { Loading } from "../components/common/Loading";
 import { EmptyState } from "../components/common/EmptyState";
 import { Input } from "../components/common/Input";
+import { Modal } from "../components/common/Modal";
 import { useAsyncData } from "../hooks/useAsyncData";
-import { empresasApi } from "../services/api";
+import { empresasApi, usuariosApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
@@ -14,12 +15,20 @@ export function EquipoPage() {
   const { user } = useAuth();
   const { pushToast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [form, setForm] = useState({
     nombre: "",
     apellido: "",
     correo: "",
     password: "",
-    id_rol: "",
+  });
+  const [editForm, setEditForm] = useState({
+    id: "",
+    nombre: "",
+    apellido: "",
+    correo: "",
+    password: "",
   });
 
   // Load user's company
@@ -50,31 +59,105 @@ export function EquipoPage() {
     event.preventDefault();
     if (!miEmpresa.data) return;
 
+    // Validar contraseña
+    if (form.password.length < 8) {
+      pushToast({ title: "Contraseña muy corta", message: "La contraseña debe tener al menos 8 caracteres", type: "error" });
+      return;
+    }
+
     try {
       await empresasApi.addUsuario(miEmpresa.data.id, {
         nombre: form.nombre,
         apellido: form.apellido,
         correo: form.correo,
         password: form.password,
-        id_rol: form.id_rol ? Number(form.id_rol) : null,
       });
       pushToast({ title: "Miembro añadido", message: `${form.nombre} ${form.apellido} añadido a la empresa`, type: "success" });
-      setForm({ nombre: "", apellido: "", correo: "", password: "", id_rol: "" });
+      setForm({ nombre: "", apellido: "", correo: "", password: "" });
       setShowForm(false);
       equipo.reload();
     } catch (error) {
-      pushToast({ title: "Error", message: error?.response?.data?.detail || "No se pudo añadir el miembro", type: "error" });
+      // Manejar errores de validación del backend (array de objetos)
+      let errorMsg = "No se pudo añadir el miembro";
+      const detail = error?.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        // Pydantic validation errors
+        errorMsg = detail.map((e) => e.msg || e.message).join(", ");
+      } else if (typeof detail === "string") {
+        errorMsg = detail;
+      } else if (detail && typeof detail === "object") {
+        errorMsg = detail.msg || detail.message || JSON.stringify(detail);
+      }
+      pushToast({ title: "Error", message: errorMsg, type: "error" });
     }
   };
 
-  const removerMiembro = async (usuarioId, nombre) => {
+  const abrirEdicion = (usuario) => {
+    setSelectedUser(usuario);
+    setEditForm({
+      id: String(usuario.id),
+      nombre: usuario.nombre || "",
+      apellido: usuario.apellido || "",
+      correo: usuario.correo || "",
+      password: "",
+    });
+    setShowEditModal(true);
+  };
+
+  const cerrarEdicion = () => {
+    setShowEditModal(false);
+    setSelectedUser(null);
+    setEditForm({ id: "", nombre: "", apellido: "", correo: "", password: "" });
+  };
+
+  const actualizarMiembro = async (event) => {
+    event.preventDefault();
+    if (!editForm.id) return;
+
+    try {
+      // Actualizar info del usuario
+      const updateData = {
+        nombre: editForm.nombre,
+        apellido: editForm.apellido,
+        correo: editForm.correo,
+      };
+
+      // Si cambió la contraseña, incluirla
+      if (editForm.password) {
+        if (editForm.password.length < 8) {
+          pushToast({ title: "Contraseña muy corta", message: "La contraseña debe tener al menos 8 caracteres", type: "error" });
+          return;
+        }
+        updateData.password = editForm.password;
+      }
+
+      await usuariosApi.update(Number(editForm.id), updateData);
+      pushToast({ title: "Miembro actualizado", message: "Cambios guardados", type: "success" });
+      cerrarEdicion();
+      equipo.reload();
+    } catch (error) {
+      let errorMsg = "No se pudo actualizar el miembro";
+      const detail = error?.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        errorMsg = detail.map((e) => e.msg || e.message).join(", ");
+      } else if (typeof detail === "string") {
+        errorMsg = detail;
+      } else if (detail && typeof detail === "object") {
+        errorMsg = detail.msg || detail.message || JSON.stringify(detail);
+      }
+      pushToast({ title: "Error", message: errorMsg, type: "error" });
+    }
+  };
+
+  const desvincularMiembro = async (usuarioId, nombre) => {
     if (!miEmpresa.data) return;
-    const confirmado = window.confirm(`¿Seguro que deseas remover a ${nombre} de la empresa?`);
+    const confirmado = window.confirm(`¿Seguro que deseas desvincular a ${nombre} de la empresa?`);
     if (!confirmado) return;
 
     try {
       await empresasApi.removeUsuario(miEmpresa.data.id, usuarioId);
-      pushToast({ title: "Miembro removido", message: `${nombre} removido de la empresa`, type: "success" });
+      pushToast({ title: "Miembro desvinculado", message: `${nombre} removido de la empresa`, type: "success" });
+      cerrarEdicion();
       equipo.reload();
     } catch (error) {
       pushToast({ title: "Error", message: error?.response?.data?.detail || "No se pudo remover el miembro", type: "error" });
@@ -151,12 +234,21 @@ export function EquipoPage() {
               render: (row) => (
                 <div className="flex gap-2">
                   {isCreator && row.id !== user?.id_usuario && (
-                    <button
-                      className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white"
-                      onClick={() => removerMiembro(row.id, `${row.nombre} ${row.apellido}`)}
-                    >
-                      <FontAwesomeIcon icon={faTrash} className="mr-1" /> Remover
-                    </button>
+                    <>
+                      <button
+                        className="rounded-lg bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                        onClick={() => abrirEdicion(row)}
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} className="mr-1" />
+                        Editar
+                      </button>
+                      <button
+                        className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-700"
+                        onClick={() => desvincularMiembro(row.id, `${row.nombre} ${row.apellido}`)}
+                      >
+                        <FontAwesomeIcon icon={faTrash} className="mr-1" /> Remover
+                      </button>
+                    </>
                   )}
                 </div>
               ),
@@ -176,8 +268,10 @@ export function EquipoPage() {
           <Input label="Nombre" value={form.nombre} onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))} required />
           <Input label="Apellido" value={form.apellido} onChange={(e) => setForm((prev) => ({ ...prev, apellido: e.target.value }))} required />
           <Input label="Correo" type="email" value={form.correo} onChange={(e) => setForm((prev) => ({ ...prev, correo: e.target.value }))} required />
-          <Input label="Contraseña" type="password" value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} required />
-          <Input label="Rol ID (opcional)" type="number" value={form.id_rol} onChange={(e) => setForm((prev) => ({ ...prev, id_rol: e.target.value }))} />
+          <div>
+            <Input label="Contraseña" type="password" value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} required minLength={8} />
+            <p className="mt-1 text-xs text-slate-500">Mínimo 8 caracteres</p>
+          </div>
 
           <div className="md:col-span-2 flex gap-2">
             <button
@@ -196,6 +290,85 @@ export function EquipoPage() {
           </div>
         </form>
       )}
+
+      {/* Edit Member Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={cerrarEdicion}
+        title={`Editar miembro: ${selectedUser?.nombre} ${selectedUser?.apellido}`}
+        size="md"
+      >
+        <form onSubmit={actualizarMiembro} className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Nombre</label>
+              <input
+                className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                value={editForm.nombre}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Apellido</label>
+              <input
+                className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                value={editForm.apellido}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, apellido: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Correo</label>
+              <input
+                className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                type="email"
+                value={editForm.correo}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, correo: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Nueva contraseña (opcional)
+              </label>
+              <input
+                className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                type="password"
+                value={editForm.password}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
+                placeholder="Dejar vacío para no cambiar"
+              />
+              <p className="mt-1 text-xs text-slate-500">Mínimo 8 caracteres si deseas cambiarla</p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 border-t border-slate-200 pt-4">
+            <button
+              type="submit"
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-700"
+            >
+              Guardar cambios
+            </button>
+            <button
+              type="button"
+              onClick={() => desvincularMiembro(Number(editForm.id), `${editForm.nombre} ${editForm.apellido}`)}
+              className="rounded-xl bg-rose-600 px-4 py-2.5 font-semibold text-white hover:bg-rose-700"
+            >
+              <FontAwesomeIcon icon={faTrash} className="mr-2" />
+              Desvincular
+            </button>
+            <button
+              type="button"
+              onClick={cerrarEdicion}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {!isCreator && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
