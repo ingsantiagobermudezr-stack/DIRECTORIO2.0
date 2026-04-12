@@ -126,8 +126,13 @@ export function EmpresaChatsPage() {
 
           const conv = convMap.get(key);
           conv.mensajes.push(msg);
-          conv.ultimoMensaje = msg;
           conv.cantidadMensajes++;
+        });
+
+        // Sort messages and set the actual last message by date
+        convMap.forEach((conv) => {
+          conv.mensajes.sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+          conv.ultimoMensaje = conv.mensajes[conv.mensajes.length - 1];
         });
 
         const convList = Array.from(convMap.values()).sort((a, b) => {
@@ -482,21 +487,6 @@ export function EmpresaChatsPage() {
                     : ""
                 }`}
               >
-                {needsReply && (
-                  <div className="absolute top-2 right-2">
-                    <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                      Espera respuesta
-                    </span>
-                  </div>
-                )}
-                {!needsReply && lastMsg && selectedConv?.id !== conv.id && (
-                  <div className="absolute top-2 right-2">
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                      Respondido
-                    </span>
-                  </div>
-                )}
                 <div className="flex items-start gap-3">
                   {(() => {
                     const imageUrl = getImageUrl(conv.marketplace?.imagenes);
@@ -512,7 +502,7 @@ export function EmpresaChatsPage() {
                       </div>
                     );
                   })()}
-                  <div className="min-w-0 flex-1 pr-20">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
                       <p className={`truncate text-sm ${needsReply ? "font-bold text-amber-900" : "font-semibold text-slate-900"}`}>
                         {conv.marketplace?.nombre || "Producto"}
@@ -536,6 +526,22 @@ export function EmpresaChatsPage() {
                     <p className="mt-0.5 text-xs text-slate-400">
                       Producto: {conv.marketplace?.nombre}
                     </p>
+                    {/* Status badge below the content */}
+                    {needsReply && (
+                      <div className="mt-1.5 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span className="text-[10px] font-semibold text-amber-600">
+                          El cliente espera respuesta
+                        </span>
+                      </div>
+                    )}
+                    {!needsReply && lastMsg && selectedConv?.id !== conv.id && (
+                      <div className="mt-1.5">
+                        <span className="text-[10px] font-semibold text-green-600">
+                          ✓ Ya respondido
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </button>
