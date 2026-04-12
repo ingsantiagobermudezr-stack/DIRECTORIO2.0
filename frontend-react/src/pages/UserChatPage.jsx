@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { Loading } from "../components/common/Loading";
 import { API_BASE_URL } from "../config/env";
+import { useWebSocketBackoff } from "../hooks/useWebSocketBackoff";
+import { buildNotificationsSocketUrl } from "../lib/ws";
 
 export function UserChatPage() {
   const navigate = useNavigate();
@@ -15,14 +17,12 @@ export function UserChatPage() {
   const [nuevoMensaje, setNuevoMensaje] = useState("");
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
-  const [wsConnected, setWsConnected] = useState(false);
   const [selectedMarketplaceId, setSelectedMarketplaceId] = useState(null);
   const [marketplaces, setMarketplaces] = useState([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [statusFilter, setStatusFilter] = useState("todos"); // todos | pendientes | enviados
-  
-  const ws = useRef(null);
+
   const mensajesEndRef = useRef(null);
   const audioCtxRef = useRef(null);
   const prevCountRef = useRef(0);
@@ -53,6 +53,56 @@ export function UserChatPage() {
       // Audio not available
     }
   };
+
+  // Reload messages function
+  const reloadMensajes = async () => {
+    try {
+      const currentUserId = user?.id_usuario || user?.id;
+      if (!currentUserId) return;
+      
+      const { data } = await mensajesApi.list({ limit: 500 });
+      const userMessages = data?.filter(
+        (m) =>
+          m.id_usuario_enviador_mensaje === currentUserId ||
+          m.id_usuario_creador_chat === currentUserId
+      ) || [];
+      setMensajes(userMessages);
+    } catch (error) {
+      console.error("Error reloading messages:", error);
+    }
+  };
+
+  // WebSocket para notificaciones en tiempo real
+  const userId = user?.id_usuario || user?.id;
+  const wsUrl = token && userId ? buildNotificationsSocketUrl(userId) : null;
+  
+  const { isConnected: wsConnected } = useWebSocketBackoff({
+    url: wsUrl,
+    enabled: !!token && !!userId,
+    onMessage: async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        // Cuando llega una notificación, recargar mensajes
+        if (data.tipo === "nueva_notificacion") {
+          await reloadMensajes();
+          
+          // Si es un mensaje nuevo, reproducir sonido
+          if (data.tipo_notificacion === "new_message" || data.tipo_notificacion === "message_reply") {
+            playNotificationSound();
+            
+            // Mostrar toast
+            pushToast({
+              title: "Nuevo mensaje",
+              message: data.contenido,
+              type: "info",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error procesando notificación WebSocket:", error);
+      }
+    },
+  });
 
   // Load user's messages (both sent AND received)
   useEffect(() => {
@@ -119,10 +169,10 @@ export function UserChatPage() {
   useEffect(() => {
     const loadMarketplaces = async () => {
       if (mensajes.length === 0) return;
-      
+
       try {
         const uniqueMarketplaceIds = [...new Set(mensajes.map(m => m.id_marketplace))];
-        const marketplacePromises = uniqueMarketplaceIds.map(id => 
+        const marketplacePromises = uniqueMarketplaceIds.map(id =>
           marketplaceApi.get(id).catch(() => null)
         );
         const results = await Promise.all(marketplacePromises);
@@ -139,54 +189,6 @@ export function UserChatPage() {
       loadMarketplaces();
     }
   }, [mensajes]);
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    if (!token || !user) return;
-
-    const userId = user.id_usuario || user.id;
-    const wsUrl = `${import.meta.env.VITE_WS_URL}/ws/notificaciones/${userId}?token=${token}`;
-    ws.current = new WebSocket(wsUrl);
-
-    ws.current.onopen = () => {
-      console.log("WebSocket connected");
-      setWsConnected(true);
-    };
-
-    ws.current.onmessage = () => {
-      // When we get a notification, reload messages
-      mensajesApi.list({ limit: 500 }).then(({ data }) => {
-        const userId = user.id_usuario || user.id;
-        const userMessages = data?.filter(m => m.id_usuario_enviador_mensaje === userId) || [];
-        setMensajes(userMessages);
-      }).catch(console.error);
-    };
-
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setWsConnected(false);
-    };
-
-    ws.current.onclose = () => {
-      console.log("WebSocket disconnected");
-      setWsConnected(false);
-      
-      // Try to reconnect after 3 seconds
-      setTimeout(() => {
-        if (user && token) {
-          const userId = user.id_usuario || user.id;
-          ws.current = new WebSocket(`${import.meta.env.VITE_WS_URL}/ws/notificaciones/${userId}?token=${token}`);
-        }
-      }, 3000);
-    };
-    
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-        ws.current = null;
-      }
-    };
-  }, [token, user]);
 
   // Group messages by marketplace (for left sidebar)
   const chatsPorProducto = useMemo(() => {
@@ -253,21 +255,6 @@ export function UserChatPage() {
   useEffect(() => {
     setSelectedImageIndex(0);
   }, [selectedMarketplaceId]);
-
-  const reloadMensajes = async () => {
-    try {
-      const userId = user.id_usuario || user.id;
-      const { data } = await mensajesApi.list({ limit: 500 });
-      const userMessages = data?.filter(
-        (m) =>
-          m.id_usuario_enviador_mensaje === userId ||
-          m.id_usuario_creador_chat === userId
-      ) || [];
-      setMensajes(userMessages);
-    } catch (error) {
-      console.error("Error reloading messages:", error);
-    }
-  };
 
   const handleEnviarMensaje = async (e) => {
     e.preventDefault();

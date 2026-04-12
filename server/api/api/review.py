@@ -8,7 +8,8 @@ from api.schemas.schemas import ReviewCreate, ReviewResponse, ReviewResponseCrea
 from api.models.models import Review, Mensaje, Marketplace, Comprobante, ArchivoMensaje, Empresa
 from api.db.conexion import get_db
 from api.api.auth import can_view_deleted_records, require_permission
-from api.api.notificaciones import create_business_notification
+from api.api.notificaciones import send_notification_to_user
+from api.utils.notificacion_tipos import TipoNotificacion
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -109,11 +110,11 @@ async def create_review(
 
     if empresa_owner_id and empresa_owner_id != db_review.id_usuario:
         try:
-            await create_business_notification(
+            await send_notification_to_user(
                 db,
                 id_usuario_destinatario=empresa_owner_id,
-                tipo="new_review",
-                contenido=f"Recibiste una nueva review con calificación {db_review.calificacion}",
+                tipo=TipoNotificacion.NEW_REVIEW.value,
+                contenido=f"Recibiste una nueva review con calificación {db_review.calificacion}/5: {db_review.comentario[:100]}{'...' if len(db_review.comentario) > 100 else ''}",
                 id_usuario_remitente=db_review.id_usuario,
             )
         except HTTPException:

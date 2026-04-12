@@ -7,10 +7,11 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from api.db.conexion import get_db
+from api.db.conexion import get_db, get_session_async
 from api.models.models import Notificacion, Usuario
 from api.schemas.schemas import NotificacionResponseDetallado, NotificacionCreate
 from api.api.auth import get_current_user, require_permission, get_user, SECRET_KEY, ALGORITHM
+from api.utils.notificacion_tipos import TipoNotificacion
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -53,7 +54,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-async def create_business_notification(
+async def send_notification_to_user(
     db: AsyncSession,
     *,
     id_usuario_destinatario: int,
@@ -61,17 +62,35 @@ async def create_business_notification(
     contenido: str,
     id_usuario_remitente: int | None = None,
 ) -> Notificacion:
-    """Crea una notificación persistida y la emite por WebSocket al destinatario."""
+    """
+    Crea una notificación persistida y la emite por WebSocket al destinatario.
+    Esta es la función principal para enviar notificaciones desde cualquier endpoint.
+    
+    Args:
+        db: Sesión de base de datos
+        id_usuario_destinatario: ID del usuario que recibirá la notificación
+        tipo: Tipo de notificación (ver TipoNotificacion)
+        contenido: Contenido/mensaje de la notificación
+        id_usuario_remitente: ID del usuario que envía (None para notificaciones del sistema)
+    
+    Returns:
+        Notificacion creada
+    
+    Raises:
+        HTTPException: Si el destinatario no existe o es auto-notificación
+    """
+    # Evita auto-notificaciones innecesarias
     if id_usuario_remitente is not None and id_usuario_remitente == id_usuario_destinatario:
-        # Evita auto-notificaciones innecesarias.
         raise HTTPException(status_code=400, detail="No se envían auto-notificaciones")
 
+    # Verificar que el destinatario existe
     usuario_dest = await db.execute(
         select(Usuario).where(Usuario.id == id_usuario_destinatario)
     )
     if not usuario_dest.scalars().first():
         raise HTTPException(status_code=404, detail="Usuario destinatario no encontrado")
 
+    # Crear la notificación en BD
     nueva_notificacion = Notificacion(
         id_usuario_remitente=id_usuario_remitente,
         id_usuario_destinatario=id_usuario_destinatario,
@@ -83,6 +102,7 @@ async def create_business_notification(
     await db.commit()
     await db.refresh(nueva_notificacion)
 
+    # Enviar por WebSocket al destinatario
     await manager.broadcast_to_user(
         id_usuario_destinatario,
         {
@@ -96,6 +116,10 @@ async def create_business_notification(
     )
 
     return nueva_notificacion
+
+
+# Alias para compatibilidad con código existente
+create_business_notification = send_notification_to_user
 
 
 def _extract_ws_token(websocket: WebSocket) -> str | None:
@@ -347,7 +371,6 @@ async def listar_todas_notificaciones(
 async def websocket_notificaciones(
     websocket: WebSocket,
     usuario_id: int,
-    db: AsyncSession = Depends(get_db),
 ):
     """
     WebSocket para recibir notificaciones en tiempo real
@@ -355,7 +378,10 @@ async def websocket_notificaciones(
     
     Requiere que el usuario_id coincida con el usuario autenticado
     """
-    usuario = await _authenticate_ws_user(websocket, db)
+    # Evita mantener una conexión DB ocupada durante toda la vida del WebSocket.
+    # Solo abrimos sesión para autenticar y luego la cerramos inmediatamente.
+    async with get_session_async() as db:
+        usuario = await _authenticate_ws_user(websocket, db)
     if usuario is None:
         await websocket.close(code=1008, reason="No autenticado")
         return

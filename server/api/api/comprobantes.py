@@ -8,7 +8,8 @@ from api.db.conexion import get_db
 from api.models.models import Comprobante, ArchivoMensaje, Mensaje, ESTADOS_FLUJO_POR_CLAVE
 from api.schemas.schemas import ComprobanteCreate, ComprobanteResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user, is_admin_user
-from api.api.notificaciones import create_business_notification
+from api.api.notificaciones import send_notification_to_user
+from api.utils.notificacion_tipos import TipoNotificacion
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
@@ -30,6 +31,7 @@ async def _notificar_estado_comprobante(
     estado: str,
     actor_id: int,
 ) -> None:
+    """Notifica a los participantes del mensaje sobre el estado del comprobante"""
     archivo_result = await db.execute(
         select(ArchivoMensaje)
         .options(joinedload(ArchivoMensaje.mensaje_rel))
@@ -49,12 +51,20 @@ async def _notificar_estado_comprobante(
     if not recipients:
         return
 
-    contenido = f"Tu comprobante fue {estado}"
-    tipo = "comprobante_aprobado" if estado == "aprobado" else "comprobante_rechazado"
+    # Determinar tipo y contenido según el estado
+    if estado == "aprobado":
+        tipo = TipoNotificacion.COMPROBANTE_APROBADO.value
+        contenido = f"Tu comprobante fue aprobado ✓"
+    elif estado == "rechazado":
+        tipo = TipoNotificacion.COMPROBANTE_RECHAZADO.value
+        contenido = f"Tu comprobante fue rechazado. Revisa los detalles y vuelve a enviarlo."
+    else:
+        tipo = TipoNotificacion.COMPROBANTE_PENDING.value
+        contenido = f"Tu comprobante está {estado}"
 
     for recipient_id in recipients:
         try:
-            await create_business_notification(
+            await send_notification_to_user(
                 db,
                 id_usuario_destinatario=recipient_id,
                 tipo=tipo,

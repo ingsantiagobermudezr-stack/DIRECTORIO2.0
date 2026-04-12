@@ -11,9 +11,11 @@ import { marketplaceApi, mensajesApi, empresasApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useAsyncData } from "../hooks/useAsyncData";
+import { useWebSocketBackoff } from "../hooks/useWebSocketBackoff";
 import { Loading } from "../components/common/Loading";
 import { EmptyState } from "../components/common/EmptyState";
 import { API_BASE_URL } from "../config/env";
+import { buildNotificationsSocketUrl } from "../lib/ws";
 
 const getImageUrl = (imagenes, index = 0) => {
   if (!imagenes || imagenes.length === 0) return null;
@@ -74,6 +76,96 @@ export function EmpresaChatsPage() {
     } catch {
       return null;
     }
+  });
+
+  // WebSocket para notificaciones en tiempo real
+  const userId = user?.id_usuario || user?.id;
+  const wsUrl = userId ? buildNotificationsSocketUrl(userId) : null;
+
+  const reloadConversaciones = async () => {
+    try {
+      const empresaId = miEmpresa.data?.id;
+      if (!empresaId) return;
+
+      const { data: marketplaces } = await marketplaceApi.list({
+        id_empresa: empresaId,
+        limit: 100,
+      });
+
+      if (!marketplaces || marketplaces.length === 0) return;
+
+      const marketplaceIds = new Set(marketplaces.map((mp) => mp.id));
+      const marketplaceMap = new Map(marketplaces.map((mp) => [mp.id, mp]));
+
+      const { data: allMensajes } = await mensajesApi.list({ limit: 1000 });
+
+      const convMap = new Map();
+      (allMensajes || []).forEach((msg) => {
+        if (!marketplaceIds.has(msg.id_marketplace)) return;
+
+        const key = `${msg.id_marketplace}_${msg.id_usuario_creador_chat}`;
+
+        if (!convMap.has(key)) {
+          const mp = marketplaceMap.get(msg.id_marketplace);
+          convMap.set(key, {
+            id: key,
+            marketplaceId: msg.id_marketplace,
+            clientId: msg.id_usuario_creador_chat,
+            marketplace: mp,
+            mensajes: [],
+            ultimoMensaje: null,
+            cantidadMensajes: 0,
+          });
+        }
+
+        const conv = convMap.get(key);
+        conv.mensajes.push(msg);
+        conv.cantidadMensajes++;
+      });
+
+      // Sort messages and set the actual last message by date
+      convMap.forEach((conv) => {
+        conv.mensajes.sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+        conv.ultimoMensaje = conv.mensajes[conv.mensajes.length - 1];
+      });
+
+      const convList = Array.from(convMap.values()).sort((a, b) => {
+        const dateA = a.ultimoMensaje?.fecha_hora || "";
+        const dateB = b.ultimoMensaje?.fecha_hora || "";
+        return new Date(dateB) - new Date(dateA);
+      });
+
+      setConversaciones(convList);
+    } catch (error) {
+      console.error("Error reloading conversaciones:", error);
+    }
+  };
+
+  useWebSocketBackoff({
+    url: wsUrl,
+    enabled: !!userId && !!miEmpresa.data,
+    onMessage: async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        // Cuando llega una notificación, recargar conversaciones
+        if (data.tipo === "nueva_notificacion") {
+          await reloadConversaciones();
+
+          // Si es un mensaje nuevo, reproducir sonido y mostrar toast
+          if (data.tipo_notificacion === "new_message" || data.tipo_notificacion === "message_reply") {
+            playNotificationSound();
+
+            pushToast({
+              title: "Nuevo mensaje de cliente",
+              message: data.contenido,
+              type: "info",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error procesando notificación WebSocket:", error);
+      }
+    },
   });
 
   const scrollToBottom = () => {

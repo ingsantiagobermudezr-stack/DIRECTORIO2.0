@@ -5,6 +5,7 @@ import { faHeart, faRightFromBracket, faStore, faUser, faBuilding, faComments } 
 import { useAuth } from "../../context/AuthContext";
 import { useAsyncData } from "../../hooks/useAsyncData";
 import { favoritosApi, empresasApi } from "../../services/api";
+import { NotificationBell } from "../common/NotificationBell";
 
 const navItems = [
   { to: "/", label: "Inicio" },
@@ -45,6 +46,9 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-2">
+      {/* Notificaciones */}
+      <NotificationBell />
+
       {/* Favoritos */}
       <Link
         to="/favoritos"

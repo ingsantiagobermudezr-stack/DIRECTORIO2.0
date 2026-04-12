@@ -8,7 +8,8 @@ from api.db.conexion import get_db
 from api.models.models import Mensaje, Marketplace
 from api.schemas.schemas import MensajeCreate, MensajeResponse
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user, is_admin_user
-from api.api.notificaciones import create_business_notification
+from api.api.notificaciones import send_notification_to_user
+from api.utils.notificacion_tipos import TipoNotificacion
 from seeders.seed_permisos import Permisos
 
 router = APIRouter()
@@ -39,6 +40,7 @@ async def create_mensaje(
     await db.commit()
     await db.refresh(db_item)
 
+    # Enviar notificación al vendedor del producto
     marketplace_result = await db.execute(
         select(Marketplace)
         .options(joinedload(Marketplace.empresa))
@@ -49,11 +51,11 @@ async def create_mensaje(
     vendedor_id = getattr(getattr(marketplace, "empresa", None), "id_usuario_creador", None)
     if vendedor_id and vendedor_id != db_item.id_usuario_enviador_mensaje:
         try:
-            await create_business_notification(
+            await send_notification_to_user(
                 db,
                 id_usuario_destinatario=vendedor_id,
-                tipo="new_message",
-                contenido=f"Tienes un nuevo mensaje sobre '{marketplace.nombre}'",
+                tipo=TipoNotificacion.NEW_MESSAGE.value,
+                contenido=f"Nuevo mensaje sobre '{marketplace.nombre}': {db_item.mensaje[:100]}{'...' if len(db_item.mensaje) > 100 else ''}",
                 id_usuario_remitente=db_item.id_usuario_enviador_mensaje,
             )
         except HTTPException:
