@@ -30,14 +30,17 @@ export function useAsyncData(fetcher, dependency = null) {
   }, []);
 
   const reload = useCallback(() => {
-    setNonce((prev) => prev + 1);
+    setNonce((n) => n + 1);
   }, []);
 
   useEffect(() => {
     const prev = prevDependencyRef.current;
+
+    // Skip if dependency hasn't changed
     if (prev !== UNSET && Object.is(prev, dependency)) {
       return;
     }
+
     prevDependencyRef.current = dependency;
     execute();
   }, [execute, dependency]);

@@ -202,7 +202,7 @@ async def get_mis_productos(
     if not current_user:
         raise HTTPException(status_code=401, detail="Debe estar autenticado")
     
-    # Obtener empresas del usuario
+    # Obtener empresas del usuario o si pertenece a alguna empresa
     result = await db.execute(
         select(Empresa).where(Empresa.id_usuario_creador == current_user.id)
     )

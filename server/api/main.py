@@ -69,7 +69,7 @@ app = FastAPI(title="Directorio API", description="API del Sistema de Directorio
 
 uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+app.mount("/api/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 origins = ["*"]  # Permitir todas las fuentes; ajustar en producción para mayor seguridad
 

@@ -177,9 +177,28 @@ class PublicidadCreate(PublicidadBase):
 
 class PublicidadResponse(PublicidadBase):
     """
-    Respuesta para publicidad con su identificador
+    Respuesta para publicidad con su identificador e imágenes
     """
     id: int
+    imagenes: Optional[list[str]] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def resolve_imagenes(cls, data):
+        if hasattr(data, '__dict__'):
+            data = dict(data.__dict__)
+
+        result = dict(data) if isinstance(data, dict) else {}
+
+        if 'imagenes' in result:
+            imgs = result['imagenes']
+            if hasattr(imgs, '__iter__') and not isinstance(imgs, str):
+                result['imagenes'] = [
+                    getattr(img, 'imagen_url', str(img)) if hasattr(img, 'imagen_url') else str(img)
+                    for img in imgs
+                ]
+
+        return result
 
     model_config = {"from_attributes": True}
 

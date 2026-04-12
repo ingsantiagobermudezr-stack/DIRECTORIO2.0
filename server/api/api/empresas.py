@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
@@ -13,6 +14,8 @@ from api.db.conexion import get_db
 from api.api.auth import can_view_deleted_records, require_permission, get_current_user_optional, is_admin_user, get_current_user
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 from fastapi.responses import FileResponse
 
@@ -103,7 +106,7 @@ async def create_empresa(
             await db.rollback()
         except Exception:
             pass
-        print(f"Error al crear empresa: {str(e)}")
+        logger.error(f"Error al crear empresa: {str(e)}", exc_info=True)
         raise HTTPException(status_code=409, detail="Conflicto al crear empresa: posible NIT duplicado")
 
 # Leer todas las empresas
@@ -183,15 +186,25 @@ async def get_mis_empresas(
     current_user = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
-    """Obtener mis empresas como creador"""
+    """Obtener empresas del usuario: donde es creador O donde es miembro (id_empresa)"""
     if not current_user:
         raise HTTPException(status_code=401, detail="Debe estar autenticado")
-    
+
+    from sqlalchemy import or_
+
+    # Construir condición OR: empresa que creó O empresa donde es miembro
+    or_conditions = [Empresa.id_usuario_creador == current_user.id]
+    if current_user.id_empresa:
+        or_conditions.append(Empresa.id == current_user.id_empresa)
+
     query = select(Empresa).options(
         joinedload(Empresa.categoria),
         joinedload(Empresa.municipio)
-    ).where(Empresa.id_usuario_creador == current_user.id)
-    
+    ).where(
+        or_(*or_conditions),
+        Empresa.deleted_at.is_(None)
+    )
+
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().unique().all()
 

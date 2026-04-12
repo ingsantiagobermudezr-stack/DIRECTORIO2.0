@@ -1,7 +1,9 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from api.schemas.schemas import PublicidadCreate, PublicidadResponse
 from api.models.models import Publicidad, ImagenPublicidad
 from api.db.conexion import get_db
@@ -9,6 +11,14 @@ from api.api.auth import can_view_deleted_records, require_permission
 from api.utils.uploads import ensure_upload_dir, save_upload_file, build_public_url, get_upload_root
 from seeders.seed_permisos import Permisos
 
+
+def _strip_timezone(dt: datetime | None) -> datetime | None:
+    """Convierte datetime con timezone a naive para compatibilidad con PostgreSQL."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=None)
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/publicidades/", response_model=PublicidadResponse)
@@ -18,27 +28,33 @@ async def create_publicidad(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        db_publicidad = Publicidad(**publicidad.model_dump())
+        db_publicidad = Publicidad(
+            id_empresa=publicidad.id_empresa,
+            id_tipo_anuncio=publicidad.id_tipo_anuncio,
+            descripcion=publicidad.descripcion,
+            fecha_inicio=_strip_timezone(publicidad.fecha_inicio),
+            fecha_fin=_strip_timezone(publicidad.fecha_fin),
+        )
         db.add(db_publicidad)
         await db.commit()
         await db.refresh(db_publicidad)
         return db_publicidad
     except Exception as e:
-        print(f"Error al crear publicidad: {e}")
+        logger.error(f"Error al crear publicidad: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error al crear la publicidad")
 
 @router.get("/publicidades/", response_model=list[PublicidadResponse])
 async def read_publicidades(
     skip: int = 0,
-    limit: int = 10,
+    limit: int = 100,
     can_view_deleted: bool = Depends(can_view_deleted_records),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Publicidad)
+    query = select(Publicidad).options(joinedload(Publicidad.imagenes))
     if not can_view_deleted:
         query = query.where(Publicidad.deleted_at.is_(None))
     result = await db.execute(query.offset(skip).limit(limit))
-    return result.scalars().all()
+    return result.scalars().unique().all()
 
 @router.get("/publicidades/{publicidad_id}", response_model=PublicidadResponse)
 async def read_publicidad(
@@ -46,7 +62,7 @@ async def read_publicidad(
     can_view_deleted: bool = Depends(can_view_deleted_records),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Publicidad).where(Publicidad.id == publicidad_id)
+    query = select(Publicidad).options(joinedload(Publicidad.imagenes)).where(Publicidad.id == publicidad_id)
     if not can_view_deleted:
         query = query.where(Publicidad.deleted_at.is_(None))
     result = await db.execute(query)
@@ -67,13 +83,18 @@ async def update_publicidad(
     if not db_publicidad:
         raise HTTPException(status_code=404, detail="Publicidad no encontrada")
     try:
-        for key, value in publicidad.model_dump().items():
+        update_data = publicidad.model_dump()
+        # Strip timezone from datetime fields
+        update_data["fecha_inicio"] = _strip_timezone(update_data["fecha_inicio"])
+        update_data["fecha_fin"] = _strip_timezone(update_data["fecha_fin"])
+        
+        for key, value in update_data.items():
             setattr(db_publicidad, key, value)
         await db.commit()
         await db.refresh(db_publicidad)
         return db_publicidad
     except Exception as e:
-        print(f"Error al actualizar publicidad: {e}")
+        logger.error(f"Error al actualizar publicidad: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error al actualizar la publicidad")
 
 @router.delete("/publicidades/{publicidad_id}")
@@ -87,7 +108,7 @@ async def delete_publicidad(publicidad_id: int, db: AsyncSession = Depends(get_d
         await db.commit()
         return {"message": "Publicidad desactivada correctamente"}
     except Exception as e:
-        print(f"Error al eliminar publicidad: {e}")
+        logger.error(f"Error al eliminar publicidad: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error al eliminar la publicidad")
 
 
