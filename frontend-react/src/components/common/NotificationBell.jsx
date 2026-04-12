@@ -1,25 +1,37 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBell,
+  faBellSlash,
+  faComment,
+  faReply,
+  faStar,
+  faCommentDots,
+  faBox,
+  faTag,
+  faCheckCircle,
+  faCheck,
+  faTimes,
+  faClock,
+} from "@fortawesome/free-solid-svg-icons";
 import { notificacionesApi } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useWebSocketBackoff } from "../../hooks/useWebSocketBackoff";
 import { buildNotificationsSocketUrl } from "../../lib/ws";
 
 const NOTIFICACION_ICONOS = {
-  new_message: "fa-comment",
-  message_reply: "fa-reply",
-  new_review: "fa-star",
-  review_response: "fa-comment-dots",
-  new_product: "fa-box",
-  price_change: "fa-tag",
-  product_sold: "fa-check-circle",
-  comprobante_aprobado: "fa-check",
-  comprobante_rechazado: "fa-times",
-  comprobante_pending: "fa-clock",
-  system_notification: "fa-bell",
-  welcome: "fa-hand-wave",
+  new_message: faComment,
+  message_reply: faReply,
+  new_review: faStar,
+  review_response: faCommentDots,
+  new_product: faBox,
+  price_change: faTag,
+  product_sold: faCheckCircle,
+  comprobante_aprobado: faCheck,
+  comprobante_rechazado: faTimes,
+  comprobante_pending: faClock,
+  system_notification: faBell,
 };
 
 const NOTIFICACION_COLORES = {
@@ -68,7 +80,6 @@ export function NotificationBell({ navigateTo }) {
   }, [userId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarNotificaciones();
   }, [cargarNotificaciones]);
 
@@ -82,7 +93,6 @@ export function NotificationBell({ navigateTo }) {
       try {
         const data = JSON.parse(event.data);
         if (data.tipo === "nueva_notificacion") {
-          // Recargar contadores y lista
           await cargarNotificaciones();
         }
       } catch (error) {
@@ -146,7 +156,7 @@ export function NotificationBell({ navigateTo }) {
         className="relative rounded-xl bg-gray-400/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-gray-400/20"
         aria-label="Notificaciones"
       >
-        <FontAwesomeIcon icon={faBell} className="text-xl" color="black" />
+        <FontAwesomeIcon icon={faBell} className="text-xl" color="black" size="xl" />
         
         {/* Badge de notificaciones sin leer */}
         {sinLeer > 0 && (
@@ -184,13 +194,14 @@ export function NotificationBell({ navigateTo }) {
           <div className="overflow-y-auto max-h-[480px]">
             {notificaciones.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                <i className="fas fa-bell-slash text-4xl mb-3"></i>
+                <FontAwesomeIcon icon={faBellSlash} className="text-4xl mb-3" />
                 <p className="text-sm">No tienes notificaciones</p>
               </div>
             ) : (
               notificaciones.map((notif) => {
-                const icono = NOTIFICACION_ICONOS[notif.tipo] || "fa-bell";
+                const icono = NOTIFICACION_ICONOS[notif.tipo] || faBell;
                 const color = NOTIFICACION_COLORES[notif.tipo] || "bg-gray-500";
+                const textColor = color.replace("bg-", "text-");
                 
                 return (
                   <div
@@ -209,7 +220,7 @@ export function NotificationBell({ navigateTo }) {
                     <div className="flex items-start gap-3">
                       {/* Icono */}
                       <div className={`flex-shrink-0 w-10 h-10 rounded-full ${color} bg-opacity-10 flex items-center justify-center`}>
-                        <i className={`fas ${icono} ${color.replace("bg-", "text-")}`}></i>
+                        <FontAwesomeIcon icon={icono} className={`${textColor}`} />
                       </div>
                       
                       {/* Contenido */}

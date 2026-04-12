@@ -464,7 +464,7 @@ export function UserChatPage() {
                     <div
                       key={chat.marketplaceId}
                       onClick={() => setSelectedMarketplaceId(chat.marketplaceId)}
-                      className={`flex items-start gap-3 p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 relative ${
+                      className={`flex flex-col gap-2 p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
                         selectedMarketplaceId === chat.marketplaceId
                           ? 'bg-blue-50 border-l-4 border-l-blue-500'
                           : hasNewReply
@@ -472,49 +472,50 @@ export function UserChatPage() {
                           : ''
                       }`}
                     >
+                      <div className="flex items-start gap-3">
+                        {/* Product Image */}
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                          {imageUrl ? (
+                            <img src={imageUrl} alt={chat.marketplace.nombre} className="w-full h-full object-cover" />
+                          ) : (
+                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                          )}
+                        </div>
+
+                        {/* Chat Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className={`truncate text-sm ${hasNewReply ? "font-bold text-amber-900" : "font-semibold text-gray-900"}`}>
+                              {chat.marketplace.nombre}
+                            </h3>
+                            <span className={`text-xs flex-shrink-0 ml-2 ${hasNewReply ? "text-amber-600 font-medium" : "text-gray-500"}`}>
+                              {formatPreviewFecha(chat.ultimoMensaje?.fecha_hora)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 truncate">
+                            {chat.marketplace.empresa?.nombre}
+                          </p>
+                          <p className={`truncate mt-1 text-sm ${hasNewReply ? "text-amber-700 font-medium" : "text-gray-700 font-medium"}`}>
+                            {chat.ultimoMensaje?.mensaje}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status badges - below message */}
                       {hasNewReply && (
-                        <div className="absolute top-2 right-2">
-                          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                            Nueva respuesta
-                          </span>
+                        <div className="flex items-center gap-1 self-start rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                          Nueva respuesta
                         </div>
                       )}
                       {!hasNewReply && chat.ultimoMensaje && selectedMarketplaceId !== chat.marketplaceId && (
-                        <div className="absolute top-2 right-2">
-                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                            Esperando
-                          </span>
+                        <div className="flex items-center gap-1 self-start rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                          Esperando respuesta
                         </div>
                       )}
-                      {/* Product Image */}
-                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
-                        {imageUrl ? (
-                          <img src={imageUrl} alt={chat.marketplace.nombre} className="w-full h-full object-cover" />
-                        ) : (
-                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                          </svg>
-                        )}
-                      </div>
-
-                      {/* Chat Info */}
-                      <div className="flex-1 min-w-0 pr-20">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className={`truncate text-sm ${hasNewReply ? "font-bold text-amber-900" : "font-semibold text-gray-900"}`}>
-                            {chat.marketplace.nombre}
-                          </h3>
-                          <span className={`text-xs flex-shrink-0 ml-2 ${hasNewReply ? "text-amber-600 font-medium" : "text-gray-500"}`}>
-                            {formatPreviewFecha(chat.ultimoMensaje?.fecha_hora)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-600 truncate">
-                          {chat.marketplace.empresa?.nombre}
-                        </p>
-                        <p className={`truncate mt-1 text-sm ${hasNewReply ? "text-amber-700 font-medium" : "text-gray-700 font-medium"}`}>
-                          {chat.ultimoMensaje?.mensaje}
-                        </p>
-                      </div>
                     </div>
                   );
                 })
